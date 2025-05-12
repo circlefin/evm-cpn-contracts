@@ -1,0 +1,20 @@
+name: AI Reviewer
+
+on:
+  pull_request:
+    types:
+      - review_requested
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  request_review_ai:
+    name: Request review from AI
+    if: ${{ contains(github.event.pull_request.requested_reviewers.*.login, 'circle-github-action-bot') }}
+    uses: circlefin/github-shared-pipelines/.github/workflows/ai-reviewer.yaml@v1
+    with:
+      review-as: circle-github-action-bot

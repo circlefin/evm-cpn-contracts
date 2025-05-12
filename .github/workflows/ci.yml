@@ -1,0 +1,28 @@
+name: Continuous Integration
+on:
+  pull_request:
+jobs:
+  lint_and_test:
+    runs-on: small-dind-spot
+    steps:
+      - name: Run Circle actions runner setup
+        uses: circlefin/circle-runner-setup-action@v5.6
+        with:
+          repository: ${{ github.repository }}
+          branch: ${{ github.ref }}
+          node_enabled: 'true'
+          node_version: 20.18.1
+          docker_compose_enabled: 'true'
+          docker_compose_version: '2.15.1'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Run Forge fmt
+        run: forge fmt --check
+
+      - name: Run Unit Tests
+        run: forge test -vv
