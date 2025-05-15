@@ -18,6 +18,9 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 
+      - name: Install Solhint
+        run: npm i
+
       - name: Run Linter
         run: npm run lint
 

@@ -15,9 +15,6 @@ jobs:
           docker_compose_enabled: 'true'
           docker_compose_version: '2.15.1'
 
-      - name: Install Solhint
-        run: npm i
-      
       - name: Run Slither
         uses: crytic/slither-action@v0.4.1
         id: slither
