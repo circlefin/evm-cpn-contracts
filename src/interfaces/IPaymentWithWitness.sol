@@ -15,9 +15,6 @@
  */
 pragma solidity 0.8.24;
 
-import {IEIP3009} from "./IEIP3009.sol";
-import {IERC20} from "./IERC20.sol";
-
 interface IPaymentWithWitness {
     error InvalidWitness();
     error NotWitness();

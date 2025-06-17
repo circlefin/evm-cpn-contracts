@@ -22,3 +22,7 @@ build
 /cache_forge
 /out
 .gas-snapshot
+
+# coverage
+report/
+lcov.info

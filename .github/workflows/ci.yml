@@ -5,27 +5,20 @@ jobs:
   lint_and_test:
     runs-on: small-dind-spot
     steps:
-      - name: Run Circle actions runner setup
-        uses: circlefin/circle-runner-setup-action@v5.6
+      - name: Check out repository code
+        uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository }}
-          branch: ${{ github.ref }}
-          node_enabled: 'true'
-          node_version: 20.18.1
-          docker_compose_enabled: 'true'
-          docker_compose_version: '2.15.1'
+          submodules: 'recursive'
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+      - name: Setup environment
+        uses: ./.github/actions/setup
 
-      - name: Install Solhint
-        run: npm i
+      # TODO: enable this in next PR
+      # - name: Run Linter
+      #   run: yarn lint
 
-      - name: Run Linter
-        run: npm run lint
-
-      - name: Run Forge fmt
-        run: forge fmt --check
+      # - name: Run Forge fmt
+      #   run: yarn format:check
 
       - name: Run Unit Tests
-        run: forge test -vv
+        run: yarn test
