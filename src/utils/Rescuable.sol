@@ -15,8 +15,8 @@
  */
 pragma solidity 0.8.24;
 
-import {Authorizable} from "./Authorizable.sol";
 import {IERC20} from "./../interfaces/IERC20.sol";
+import {Authorizable} from "./Authorizable.sol";
 import {SafeERC20} from "./SafeERC20.sol";
 
 /**

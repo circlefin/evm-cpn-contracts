@@ -26,7 +26,8 @@ import {IERC20} from "../interfaces/IERC20.sol";
  * To use this library you can add a `using SafeERC20 for IERC20;` statement to your contract,
  * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.
  *
- * Forked from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/19c2f2f5a5ea43e18dfff2b92b54b76815783d93/contracts/token/ERC20/utils/SafeERC20.sol
+ * Forked from
+ * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/19c2f2f5a5ea43e18dfff2b92b54b76815783d93/contracts/token/ERC20/utils/SafeERC20.sol
  * Modifications:
  * 1. Removed Unused functions (Mar/18/2025)
  */

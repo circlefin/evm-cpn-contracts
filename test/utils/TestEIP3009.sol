@@ -15,10 +15,10 @@
  */
 pragma solidity 0.8.24;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {EIP712} from "./../../src/utils/cryptography/EIP712.sol";
 import {MessageHashUtils} from "./../../src/utils/cryptography/MessageHashUtils.sol";
 import {SignatureChecker} from "./../../src/utils/cryptography/SignatureChecker.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title EIP-3009
@@ -33,11 +33,13 @@ abstract contract TestEIP3009 is ERC20 {
         _name = name_;
     }
 
-    // keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+    // keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256
+    // validBefore,bytes32 nonce)")
     bytes32 public constant TRANSFER_WITH_AUTHORIZATION_TYPEHASH =
         0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267;
 
-    // keccak256("ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+    // keccak256("ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256
+    // validBefore,bytes32 nonce)")
     bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
         0xd099cc98ef71107a616c4f0f941f04c322d8e254fe26b3c6668db87aae413de8;
 
@@ -172,6 +174,7 @@ abstract contract TestEIP3009 is ERC20 {
         bytes32 nonce,
         bytes memory signature
     ) internal {
+        // solhint-disable-next-line reason-string, gas-custom-errors
         require(to == msg.sender, "FiatTokenV2: caller must be the payee");
         _requireValidAuthorization(from, nonce, validAfter, validBefore);
         _requireValidSignature(
@@ -220,6 +223,7 @@ abstract contract TestEIP3009 is ERC20 {
      * @param signature     Signature byte array produced by an EOA wallet or a contract wallet
      */
     function _requireValidSignature(address signer, bytes32 dataHash, bytes memory signature) private view {
+        // solhint-disable-next-line reason-string, gas-custom-errors
         require(
             SignatureChecker.isValidSignatureNow(
                 signer, MessageHashUtils.toTypedDataHash(_domainSeparator(), dataHash), signature
@@ -234,6 +238,7 @@ abstract contract TestEIP3009 is ERC20 {
      * @param nonce         Nonce of the authorization
      */
     function _requireUnusedAuthorization(address authorizer, bytes32 nonce) private view {
+        // solhint-disable-next-line reason-string, gas-custom-errors
         require(!_authorizationStates[authorizer][nonce], "FiatTokenV2: authorization is used or canceled");
     }
 
@@ -248,7 +253,9 @@ abstract contract TestEIP3009 is ERC20 {
         private
         view
     {
+        // solhint-disable-next-line reason-string, gas-custom-errors
         require(block.timestamp > validAfter, "FiatTokenV2: authorization is not yet valid");
+        // solhint-disable-next-line reason-string, gas-custom-errors
         require(block.timestamp < validBefore, "FiatTokenV2: authorization is expired");
         _requireUnusedAuthorization(authorizer, nonce);
     }

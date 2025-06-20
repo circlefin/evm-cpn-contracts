@@ -13,12 +13,11 @@ jobs:
       - name: Setup environment
         uses: ./.github/actions/setup
 
-      # TODO: enable this in next PR
-      # - name: Run Linter
-      #   run: yarn lint
+      - name: Run Linter
+        run: yarn lint
 
-      # - name: Run Forge fmt
-      #   run: yarn format:check
+      - name: Run Forge fmt
+        run: yarn format:check
 
       - name: Run Unit Tests
         run: yarn test

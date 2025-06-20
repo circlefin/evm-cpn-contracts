@@ -18,7 +18,8 @@ pragma solidity 0.8.24;
 /**
  * @dev Interface of the ERC-20 standard as defined in the ERC.
  *
- * @dev Forked from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/0034c302241c4b1a1685272d4df42ca5d64b8c34/contracts/token/ERC20/ERC20.sol
+ * @dev Forked from
+ * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/0034c302241c4b1a1685272d4df42ca5d64b8c34/contracts/token/ERC20/ERC20.sol
  */
 interface IERC20 {
     /**

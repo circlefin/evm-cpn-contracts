@@ -15,15 +15,15 @@
  */
 pragma solidity 0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {TestERC20} from "./utils/TestERC20.sol";
-import {IERC20} from "./../src/interfaces/IERC20.sol";
-import {IEIP3009} from "./../src/interfaces/IEIP3009.sol";
-import {IPaymentWithWitness} from "./../src/interfaces/IPaymentWithWitness.sol";
 import {PaymentWithWitness} from "./../src/PaymentWithWitness.sol";
+import {IERC20} from "./../src/interfaces/IERC20.sol";
+import {IPaymentWithWitness} from "./../src/interfaces/IPaymentWithWitness.sol";
 import {Authorizable} from "./../src/utils/Authorizable.sol";
-import {Rescuable} from "./../src/utils/Rescuable.sol";
+
 import {Ownable} from "./../src/utils/Ownable.sol";
+import {Rescuable} from "./../src/utils/Rescuable.sol";
+import {TestERC20} from "./utils/TestERC20.sol";
+import {Test} from "forge-std/src/Test.sol";
 
 contract PaymentWithWitnessTest is Test {
     PaymentWithWitness public paymentContract;
