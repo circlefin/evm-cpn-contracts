@@ -34,7 +34,8 @@ pragma solidity 0.8.24;
  * to protect against it, check out our blog post
  * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
  *
- * Forked from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/0034c302241c4b1a1685272d4df42ca5d64b8c34/contracts/utils/ReentrancyGuard.sol
+ * Forked from
+ * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/0034c302241c4b1a1685272d4df42ca5d64b8c34/contracts/utils/ReentrancyGuard.sol
  */
 abstract contract ReentrancyGuard {
     // Booleans are more expensive than uint256 or any type that takes up a full

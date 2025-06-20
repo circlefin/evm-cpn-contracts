@@ -15,17 +15,19 @@
  */
 pragma solidity 0.8.24;
 
-import {IPaymentWithWitness} from "./interfaces/IPaymentWithWitness.sol";
-import {Witnessable} from "./utils/Witnessable.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
 import {IEIP3009} from "./interfaces/IEIP3009.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IPaymentWithWitness} from "./interfaces/IPaymentWithWitness.sol";
+
+import {Pausable} from "./utils/Pausable.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
+
+import {Rescuable} from "./utils/Rescuable.sol";
+import {SafeERC20} from "./utils/SafeERC20.sol";
+import {Witnessable} from "./utils/Witnessable.sol";
 import {EIP712} from "./utils/cryptography/EIP712.sol";
 import {MessageHashUtils} from "./utils/cryptography/MessageHashUtils.sol";
 import {SignatureChecker} from "./utils/cryptography/SignatureChecker.sol";
-import {Pausable} from "./utils/Pausable.sol";
-import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
-import {SafeERC20} from "./utils/SafeERC20.sol";
-import {Rescuable} from "./utils/Rescuable.sol";
 
 /**
  * @title PaymentWithWitness

@@ -25,7 +25,8 @@ pragma solidity 0.8.24;
  *
  * This contract is only required for intermediate, library-like contracts.
  *
- * Forked from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/6ba452dea4258afe77726293435f10baf2bed265/contracts/utils/Context.sol
+ * Forked from
+ * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/6ba452dea4258afe77726293435f10baf2bed265/contracts/utils/Context.sol
  */
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
