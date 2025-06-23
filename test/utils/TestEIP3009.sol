@@ -15,10 +15,10 @@
  */
 pragma solidity 0.8.24;
 
-import {EIP712} from "./../../src/utils/cryptography/EIP712.sol";
-import {MessageHashUtils} from "./../../src/utils/cryptography/MessageHashUtils.sol";
-import {SignatureChecker} from "./../../src/utils/cryptography/SignatureChecker.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @title EIP-3009
@@ -26,12 +26,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  * @dev Contracts that inherit from this must wrap these with publicly
  * accessible functions, optionally adding modifiers where necessary
  */
-abstract contract TestEIP3009 is ERC20 {
-    string private _name;
-
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
-        _name = name_;
-    }
+abstract contract TestEIP3009 is ERC20, EIP712 {
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) EIP712(name_, "2") {}
 
     // keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256
     // validBefore,bytes32 nonce)")
@@ -274,6 +270,6 @@ abstract contract TestEIP3009 is ERC20 {
      * @notice EIP712 domain separator
      */
     function _domainSeparator() internal view returns (bytes32) {
-        return EIP712.makeDomainSeparator(_name, "2");
+        return _domainSeparatorV4();
     }
 }
