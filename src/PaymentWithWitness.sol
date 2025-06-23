@@ -16,24 +16,26 @@
 pragma solidity 0.8.24;
 
 import {IEIP3009} from "./interfaces/IEIP3009.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
+
 import {IPaymentWithWitness} from "./interfaces/IPaymentWithWitness.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Pausable} from "./utils/Pausable.sol";
-import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {Rescuable} from "./utils/Rescuable.sol";
-import {SafeERC20} from "./utils/SafeERC20.sol";
+
 import {Witnessable} from "./utils/Witnessable.sol";
-import {EIP712} from "./utils/cryptography/EIP712.sol";
-import {MessageHashUtils} from "./utils/cryptography/MessageHashUtils.sol";
-import {SignatureChecker} from "./utils/cryptography/SignatureChecker.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @title PaymentWithWitness
  * @notice Implements ERC20 transfer functionality with additional witness signature
  */
-contract PaymentWithWitness is IPaymentWithWitness, Witnessable, Rescuable, Pausable, ReentrancyGuard {
+contract PaymentWithWitness is IPaymentWithWitness, Witnessable, Rescuable, Pausable, ReentrancyGuard, EIP712 {
     using SafeERC20 for IERC20;
     using SafeERC20 for IEIP3009;
 
@@ -61,6 +63,8 @@ contract PaymentWithWitness is IPaymentWithWitness, Witnessable, Rescuable, Paus
      * @notice authorizer address => witness => bool (true if witness is valid)
      */
     mapping(address => bool) private _witnesses;
+
+    constructor() EIP712("PaymentWithWitness", "1") {}
 
     /**
      * @inheritdoc IPaymentWithWitness
@@ -287,9 +291,7 @@ contract PaymentWithWitness is IPaymentWithWitness, Witnessable, Rescuable, Paus
     function _requireValidSignature(address signer, bytes32 dataHash, bytes calldata signature) private view {
         if (
             !SignatureChecker.isValidSignatureNow(
-                signer,
-                MessageHashUtils.toTypedDataHash(EIP712.makeDomainSeparator("PaymentWithWitness", "1"), dataHash),
-                signature
+                signer, MessageHashUtils.toTypedDataHash(_domainSeparatorV4(), dataHash), signature
             )
         ) revert InvalidSignature();
     }

@@ -16,13 +16,14 @@
 pragma solidity 0.8.24;
 
 import {PaymentWithWitness} from "./../src/PaymentWithWitness.sol";
-import {IERC20} from "./../src/interfaces/IERC20.sol";
+
 import {IPaymentWithWitness} from "./../src/interfaces/IPaymentWithWitness.sol";
 import {Authorizable} from "./../src/utils/Authorizable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Ownable} from "./../src/utils/Ownable.sol";
 import {Rescuable} from "./../src/utils/Rescuable.sol";
 import {TestERC20} from "./utils/TestERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Test} from "forge-std/src/Test.sol";
 
 contract PaymentWithWitnessTest is Test {
