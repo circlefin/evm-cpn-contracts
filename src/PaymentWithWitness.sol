@@ -20,7 +20,7 @@ import {IEIP3009} from "./interfaces/IEIP3009.sol";
 import {IPaymentWithWitness} from "./interfaces/IPaymentWithWitness.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Pausable} from "./utils/Pausable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {Rescuable} from "./utils/Rescuable.sol";

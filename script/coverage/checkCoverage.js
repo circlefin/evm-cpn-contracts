@@ -212,7 +212,6 @@ function getFormattedCoverageTableRowsTest(coverageTableRows, tableHeader) {
 
     // Fail if any files found below the minimum coverage threshold
     if (belowThresholdFiles.length > 0 || nonWhitelistedPassWithSlackFiles.length > 0) {
-        // TODO: uncomment line once source code coverages have been bumped up
-        // process.exit(2);
+        process.exit(2);
     }
 })();

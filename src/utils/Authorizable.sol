@@ -16,11 +16,12 @@
 pragma solidity 0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
  * @title Authorizable
  */
-abstract contract Authorizable is Ownable {
+abstract contract Authorizable is Ownable2Step {
     mapping(bytes32 => address) private _authorized;
 
     error InvalidAuthorizer(bytes32 role);
