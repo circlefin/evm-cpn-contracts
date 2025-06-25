@@ -344,6 +344,72 @@ contract PaymentWithWitnessTest is Test {
         );
     }
 
+    function testPayment3009InexactTransfer() public {
+        bytes32 paymentNonce = bytes32("paymentNonceInexact");
+        // Payment intent for 200 ether
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "Payment(address token,address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address witness)"
+                ),
+                address(token),
+                payer,
+                payee,
+                200 ether,
+                0,
+                block.timestamp + 1000,
+                paymentNonce,
+                witness
+            )
+        );
+
+        bytes32 transfer3009Nonce = bytes32("transfer3009NonceInexact");
+        // EIP3009 authorization for 200 ether (same amount as intent)
+        bytes32 receiveWithAuthStructHash = keccak256(
+            abi.encode(
+                token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                payer,
+                address(paymentContract),
+                200 ether, // Same amount as payment intent
+                0,
+                block.timestamp + 1000,
+                transfer3009Nonce
+            )
+        );
+        (uint8 vi, bytes32 ri, bytes32 si) =
+            vm.sign(payerPk, _computeTypedDataHash("USDC", "2", address(token), receiveWithAuthStructHash));
+
+        vm.warp(1); // ensure block.timestamp > validAfter=0
+
+        // Get the current balance of the contract
+        uint256 contractBalanceBefore = token.balanceOf(address(paymentContract));
+
+        // Mock the `balanceOf` call to simulate an inexact transfer (e.g., due to token fees).
+        // This mock will apply to `balanceOf` calls inside the tested function, causing the
+        // post-transfer balance check to fail and revert as expected.
+        vm.mockCall(
+            address(token),
+            abi.encodeWithSignature("balanceOf(address)", address(paymentContract)),
+            abi.encode(contractBalanceBefore + 180 ether) // 20 ether less than the expected 200 ether
+        );
+
+        vm.prank(spender);
+        vm.expectRevert(IPaymentWithWitness.InexactTransfer.selector);
+        paymentContract.payment(
+            IPaymentWithWitness.TransferIntent({
+                token: address(token),
+                from: payer,
+                to: payee,
+                value: 200 ether, // Intent for 200 ether, but mock shows only 180 ether transferred
+                validAfter: 0,
+                validBefore: block.timestamp + 1000,
+                nonce: paymentNonce
+            }),
+            IPaymentWithWitness.WitnessData({witness: witness, signature: _composeSignature(structHash, witnessPk)}),
+            IPaymentWithWitness.ReceiveWithAuthData({nonce: transfer3009Nonce, signature: abi.encodePacked(ri, si, vi)})
+        );
+    }
+
     function testPaymentWithPayeeTransferFrom() public {
         bytes32 paymentNonce = bytes32("paymentNonce3");
         bytes32 structHash = keccak256(
@@ -461,6 +527,88 @@ contract PaymentWithWitnessTest is Test {
                 from: payer,
                 to: payee,
                 value: 200 ether,
+                validAfter: 0,
+                validBefore: block.timestamp + 1000,
+                nonce: paymentNonce
+            }),
+            IPaymentWithWitness.WitnessData({witness: witness, signature: _composeSignature(structHash, witnessPk)}),
+            IPaymentWithWitness.ReceiveWithAuthData({nonce: transfer3009Nonce, signature: abi.encodePacked(ri, si, vi)}),
+            _composeSignature(payeeStructHash, payeePk)
+        );
+    }
+
+    function testPaymentWithPayee3009InexactTransfer() public {
+        bytes32 paymentNonce = bytes32("paymentNoncePayeeInexact");
+        // Payment intent for 200 ether
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "PaymentWithPayee(address token,address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address witness)"
+                ),
+                address(token),
+                payer,
+                payee,
+                200 ether,
+                0,
+                block.timestamp + 1000,
+                paymentNonce,
+                witness
+            )
+        );
+
+        bytes32 payeeStructHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "PaymentWithPayee(address token,address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
+                ),
+                address(token),
+                payer,
+                payee,
+                200 ether,
+                0,
+                block.timestamp + 1000,
+                paymentNonce
+            )
+        );
+
+        bytes32 transfer3009Nonce = bytes32("transfer3009NoncePayeeInexact");
+        // EIP3009 authorization for 200 ether (same amount as intent)
+        bytes32 receiveWithAuthStructHash = keccak256(
+            abi.encode(
+                token.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                payer,
+                address(paymentContract),
+                200 ether, // Same amount as payment intent
+                0,
+                block.timestamp + 1000,
+                transfer3009Nonce
+            )
+        );
+        (uint8 vi, bytes32 ri, bytes32 si) =
+            vm.sign(payerPk, _computeTypedDataHash("USDC", "2", address(token), receiveWithAuthStructHash));
+
+        vm.warp(1); // ensure block.timestamp > validAfter=0
+
+        // Get the current balance of the contract
+        uint256 contractBalanceBefore = token.balanceOf(address(paymentContract));
+
+        // Mock the `balanceOf` call to simulate an inexact transfer (e.g., due to token fees).
+        // This mock will apply to `balanceOf` calls inside the tested function, causing the
+        // post-transfer balance check to fail and revert as expected.
+        vm.mockCall(
+            address(token),
+            abi.encodeWithSignature("balanceOf(address)", address(paymentContract)),
+            abi.encode(contractBalanceBefore + 150 ether) // 50 ether less than the expected 200 ether
+        );
+
+        vm.prank(spender);
+        vm.expectRevert(IPaymentWithWitness.InexactTransfer.selector);
+        paymentContract.paymentWithPayee(
+            IPaymentWithWitness.TransferIntent({
+                token: address(token),
+                from: payer,
+                to: payee,
+                value: 200 ether, // Intent for 200 ether, but mock shows only 150 ether transferred
                 validAfter: 0,
                 validBefore: block.timestamp + 1000,
                 nonce: paymentNonce

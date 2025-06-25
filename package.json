@@ -7,6 +7,7 @@
     "lint": "solhint -w 0 -c .solhint-src.json './src/**/*.sol' && solhint -w 0 -c .solhint-test.json './test/**/*.sol'",
     "test": "forge test -vv",
     "coverage": "forge coverage > temp-ci_yarn_check-coverage.out && node script/coverage/checkCoverage.js temp-ci_yarn_check-coverage.out && rm temp-ci_yarn_check-coverage.out",
+    "coverage:html": "forge coverage --report lcov && genhtml lcov.info -o report --branch-coverage --ignore-errors inconsistent && open report/index.html",
     "format:check": "forge fmt --check",
     "format:write": "forge fmt"
   },
