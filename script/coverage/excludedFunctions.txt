@@ -1,0 +1,5 @@
+// Proxy-only internal gates (e.g. _authorizeUpgrade), or inline modifiers not tracked by coverage
+#onlyFactory
+#onlyConfigurator
+#onlyOwner
+#onlyAttester

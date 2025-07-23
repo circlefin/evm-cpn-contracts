@@ -5,6 +5,7 @@
     "no-unused-vars": "off",
     "no-console": "off",
     "func-name-mixedcase": "off",
+    "gas-custom-errors": "off",
     "func-visibility": ["error", { "ignoreConstructors": true }]
   }
 }

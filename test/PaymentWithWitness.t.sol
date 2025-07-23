@@ -746,7 +746,7 @@ contract PaymentWithWitnessTest is Test {
         // Then remove it
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Authorizable.AuthorizerRemoved(keccak256("RESCUER_ROLE"));
+        emit Rescuable.RescuerChanged(rescuer, address(0));
         paymentContract.removeRescuer();
         assertEq(paymentContract.rescuer(), address(0));
 
@@ -759,7 +759,7 @@ contract PaymentWithWitnessTest is Test {
         // First set a rescuer
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Authorizable.AuthorizerChanged(rescuer, keccak256("RESCUER_ROLE"));
+        emit Rescuable.RescuerChanged(address(0), rescuer);
         paymentContract.updateRescuer(rescuer);
         assertEq(paymentContract.rescuer(), rescuer);
     }
