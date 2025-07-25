@@ -17,7 +17,7 @@
  */
 pragma solidity 0.8.24;
 
-import {CPNPayment} from "../../src/CPNPayment.sol";
+import {CirclePayment} from "../../src/CirclePayment.sol";
 import {Create2Factory} from "../../src/factory/Create2Factory.sol";
 import {IMinimalPermit2} from "../../src/interfaces/IMinimalPermit2.sol";
 import {Script} from "forge-std/src/Script.sol";
@@ -25,11 +25,11 @@ import {console2} from "forge-std/src/console2.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-// forge script script/deploy/DeployCPNPaymentScript.s.sol \
+// forge script script/deploy/DeployCirclePaymentScript.s.sol \
 //   --rpc-url $BLOCKCHAIN_RPC_URL \
 //   --private-key $DEPLOYER_PRIVATE_KEY \
 //   --broadcast
-contract DeployCPNPaymentScript is Script {
+contract DeployCirclePaymentScript is Script {
     /// ─────────── env vars ───────────
     address private deployer;
 
@@ -72,15 +72,15 @@ contract DeployCPNPaymentScript is Script {
         vm.startBroadcast(deployer);
 
         bytes memory initData = abi.encodeCall(
-            CPNPayment.initialize,
+            CirclePayment.initialize,
             (IMinimalPermit2(permit2Addr), ownerAddr, rescuerAddr, pauserAddr, configuratorAddr, attesters)
         );
 
         bytes[] memory calls = new bytes[](1);
         calls[0] = initData;
 
-        address cpnPayment = factory.deployAndMultiCall(salt, type(CPNPayment).creationCode, calls);
-        console2.log("CPNPayment deployed at:", cpnPayment);
+        address cpnPayment = factory.deployAndMultiCall(salt, type(CirclePayment).creationCode, calls);
+        console2.log("CirclePayment deployed at:", cpnPayment);
 
         vm.stopBroadcast();
     }
