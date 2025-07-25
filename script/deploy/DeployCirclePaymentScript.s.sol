@@ -44,10 +44,10 @@ contract DeployCirclePaymentScript is Script {
 
     /// ─────────── helpers ───────────
     function _loadAttesters() internal view returns (address[] memory attesters) {
-        uint256 count = vm.envUint("CPN_PAYMENT_ATTESTER_COUNT");
+        uint256 count = vm.envUint("CIRCLE_PAYMENT_ATTESTER_COUNT");
         attesters = new address[](count);
         for (uint256 i; i < count; ++i) {
-            attesters[i] = vm.envAddress(string.concat("CPN_PAYMENT_ATTESTER_", Strings.toString(i)));
+            attesters[i] = vm.envAddress(string.concat("CIRCLE_PAYMENT_ATTESTER_", Strings.toString(i)));
         }
     }
 
@@ -55,14 +55,14 @@ contract DeployCirclePaymentScript is Script {
     function setUp() public {
         deployer = vm.envAddress("DEPLOYER_ADDRESS");
 
-        ownerAddr = vm.envAddress("CPN_PAYMENT_OWNER_ADDRESS");
-        rescuerAddr = vm.envAddress("CPN_PAYMENT_RESCUER_ADDRESS");
-        pauserAddr = vm.envAddress("CPN_PAYMENT_PAUSER_ADDRESS");
-        configuratorAddr = vm.envAddress("CPN_PAYMENT_CONFIGURATOR_ADDRESS");
+        ownerAddr = vm.envAddress("CIRCLE_PAYMENT_OWNER_ADDRESS");
+        rescuerAddr = vm.envAddress("CIRCLE_PAYMENT_RESCUER_ADDRESS");
+        pauserAddr = vm.envAddress("CIRCLE_PAYMENT_PAUSER_ADDRESS");
+        configuratorAddr = vm.envAddress("CIRCLE_PAYMENT_CONFIGURATOR_ADDRESS");
         permit2Addr = vm.envAddress("PERMIT2_CONTRACT_ADDRESS");
 
         factory = Create2Factory(vm.envAddress("CREATE2_FACTORY_CONTRACT_ADDRESS"));
-        salt = keccak256(bytes(vm.envString("CPN_PAYMENT_SALT")));
+        salt = keccak256(bytes(vm.envString("CIRCLE_PAYMENT_SALT")));
     }
 
     /// ─────────── run ───────────
@@ -79,8 +79,8 @@ contract DeployCirclePaymentScript is Script {
         bytes[] memory calls = new bytes[](1);
         calls[0] = initData;
 
-        address cpnPayment = factory.deployAndMultiCall(salt, type(CirclePayment).creationCode, calls);
-        console2.log("CirclePayment deployed at:", cpnPayment);
+        address circlePayment = factory.deployAndMultiCall(salt, type(CirclePayment).creationCode, calls);
+        console2.log("CirclePayment deployed at:", circlePayment);
 
         vm.stopBroadcast();
     }

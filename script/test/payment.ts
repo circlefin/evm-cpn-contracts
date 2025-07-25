@@ -15,7 +15,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { config } from "dotenv";
-import { abi as cpnAbi } from "../../out/CirclePayment.sol/CirclePayment.json";
+import { abi as circlePaymentAbi } from "../../out/CirclePayment.sol/CirclePayment.json";
 
 config({ path: "../../configs/.env.dev" });
 
@@ -68,7 +68,7 @@ async function main() {
   const chain = sepolia;
 
   const permit2 = envAddr("PERMIT2_CONTRACT_ADDRESS");
-  const cpn = envAddr("CPN_PAYMENT_CONTRACT_ADDRESS");
+  const circlePayment = envAddr("CIRCLE_PAYMENT_CONTRACT_ADDRESS");
   const token = envAddr("TOKEN_ADDRESS");
 
   const payerKey = normalizeKey(process.env.PAYER_PRIVATE_KEY, "PAYER_PRIVATE_KEY");
@@ -94,8 +94,8 @@ async function main() {
   });
 
   WITNESS_PAYMENT_TYPE_STR = (await publicClient.readContract({
-      address: cpn,
-      abi: cpnAbi,
+      address: circlePayment,
+      abi: circlePaymentAbi,
       functionName: "_WITNESS_PAYMENT_TYPE_STR",
   })) as string;
 
@@ -172,7 +172,7 @@ async function main() {
           [
               dynamicWitnessTypeHash,
               tokenPermissionsHash,
-              cpn,
+              circlePayment,
               permitNonce,
               permitDeadline,
               witnessHash,
@@ -233,7 +233,7 @@ async function main() {
               token,
               amount: permittedAmount,
           },
-          spender: cpn,
+          spender: circlePayment,
           nonce: permitNonce,
           deadline: permitDeadline,
           witness: {
@@ -262,8 +262,8 @@ async function main() {
   };
 
   const { request } = await publicClient.simulateContract({
-      address: cpn,
-      abi: cpnAbi,
+      address: circlePayment,
+      abi: circlePaymentAbi,
       functionName: "execute",
       args: [
           {
