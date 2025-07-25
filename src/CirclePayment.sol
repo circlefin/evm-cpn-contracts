@@ -31,9 +31,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @title CPNPayment
+/// @title CirclePayment
 /// @notice Circle Payments Network onchain payment contract.
-contract CPNPayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
+contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
     using SafeERC20 for IERC20;
 
     //──────────────────────────── CONSTANTS ─────────────────────────────
@@ -44,7 +44,7 @@ contract CPNPayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard, R
     // EIP‑712 domain separator parameters
     bytes32 private constant _EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 private constant _NAME_HASH = keccak256("CPNPayment");
+    bytes32 private constant _NAME_HASH = keccak256("CirclePayment");
     bytes32 private constant _VERSION_HASH = keccak256("1");
 
     // Typed data hashes (see design doc p.4‑6)
@@ -181,7 +181,7 @@ contract CPNPayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard, R
     /// @param intent     Full payment intent struct.
     /// @param payerData  Permit2 witness + signature.
     /// @param payeeSig   Optional payee EIP‑712 signature.
-    function payment(PaymentIntent calldata intent, PayerData calldata payerData, bytes calldata payeeSig)
+    function execute(PaymentIntent calldata intent, PayerData calldata payerData, bytes calldata payeeSig)
         external
         nonReentrant
         whenNotPaused
@@ -232,7 +232,7 @@ contract CPNPayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard, R
     /// @dev Funds are pulled (value+fee) and refunded minus fee.
     /// @param intent   PaymentIntent (only fields used: from, nonce, beneficiary, fee).
     /// @param data     Cancel permit + signature.
-    function cancelPayment(PaymentIntent calldata intent, PayerData calldata data)
+    function cancel(PaymentIntent calldata intent, PayerData calldata data)
         external
         nonReentrant
         whenNotPaused
