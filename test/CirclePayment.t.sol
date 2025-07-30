@@ -147,14 +147,14 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 100,
             nonce: n,
             beneficiary: feeSink,
-            fee: fee,
+            maxFee: fee,
             requirePayeeSign: false
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
 
         vm.prank(attester);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", fee);
 
         assertEq(usdc.balanceOf(payee), value);
         assertEq(usdc.balanceOf(feeSink), fee);
@@ -174,7 +174,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 2000,
             nonce: "future",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
 
@@ -182,7 +182,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.NotYetValid.selector);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
     }
 
     function testPayment_revertExpired() public {
@@ -195,14 +195,14 @@ contract CirclePaymentTest is Test {
             validBefore: 1,
             nonce: "exp",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.ExpiredIntent.selector);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
     }
 
     function testNonceReuseReverts() public {
@@ -216,17 +216,17 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 100,
             nonce: n,
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1), signature: ""});
 
         vm.prank(attester);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
 
         vm.prank(attester);
         vm.expectRevert(); // any revert – nonce must be marked used
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
     }
 
     /* --------------------------------------------------------------------- */
@@ -244,14 +244,14 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 10,
             nonce: "pause",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1), signature: ""});
 
         vm.prank(attester);
         vm.expectRevert(); // EnforcedPause
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
     }
 
     function testAddRemoveAttester() public {
@@ -269,13 +269,13 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 10,
             nonce: "att",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1), signature: ""});
 
         vm.prank(newAttester);
-        payment.execute(intent, pd, ""); // succeeds
+        payment.execute(intent, pd, "", 0); // succeeds
 
         vm.startPrank(config);
         payment.removeAttester(newAttester);
@@ -285,7 +285,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(newAttester);
         vm.expectRevert(abi.encodeWithSelector(CirclePayment.InvalidAttester.selector, newAttester));
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
     }
 
     function testRescueERC20() public {
@@ -312,7 +312,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 1 days,
             nonce: n,
             beneficiary: feeSink,
-            fee: fee,
+            maxFee: fee,
             requirePayeeSign: true
         });
 
@@ -335,7 +335,7 @@ contract CirclePaymentTest is Test {
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
 
         vm.prank(attester);
-        payment.execute(intent, pd, sig);
+        payment.execute(intent, pd, sig, fee);
 
         assertEq(usdc.balanceOf(payee), value);
         assertEq(usdc.balanceOf(feeSink), fee);
@@ -350,7 +350,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 10,
             nonce: "badSig",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: true
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
@@ -360,7 +360,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.InvalidSignature.selector);
-        payment.execute(intent, pd, sig);
+        payment.execute(intent, pd, sig, 0);
     }
 
     function testVerifySig_InvalidLengthSignature() public {
@@ -372,7 +372,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 100,
             nonce: "badLen",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: true
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
@@ -382,7 +382,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.InvalidSignature.selector);
-        payment.execute(intent, pd, badSig);
+        payment.execute(intent, pd, badSig, 0);
     }
 
     function testInitialize_revertsIfZeroOwner() public {
@@ -411,11 +411,11 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 10,
             nonce: "initAdd",
             beneficiary: address(0),
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
     }
 
     function testRenounceOwnershipReverts() public {
@@ -438,7 +438,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 1 days,
             nonce: n,
             beneficiary: feeSink,
-            fee: fee,
+            maxFee: fee,
             requirePayeeSign: true
         });
 
@@ -446,7 +446,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.InvalidSignature.selector);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", fee);
     }
 
     function testPayeeSig_contractWallet1271() public {
@@ -467,7 +467,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 1 days,
             nonce: nonce,
             beneficiary: feeSink,
-            fee: fee,
+            maxFee: fee,
             requirePayeeSign: true
         });
 
@@ -480,7 +480,7 @@ contract CirclePaymentTest is Test {
         payment.addAttester(attester);
 
         vm.prank(attester);
-        payment.execute(intent, pd, sig);
+        payment.execute(intent, pd, sig, fee);
 
         assertEq(usdc.balanceOf(contractWallet), value);
         assertEq(usdc.balanceOf(feeSink), fee);
@@ -511,7 +511,7 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 100,
             nonce: nonce,
             beneficiary: feeSink,
-            fee: fee,
+            maxFee: fee,
             requirePayeeSign: false
         });
 
@@ -520,7 +520,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.InvalidAmount.selector);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", fee); // fee ≤ maxFee, but permit amount mismatched
     }
 
     function testHelpers_domain_and_nonce() public {
@@ -540,13 +540,13 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 10,
             nonce: n,
             beneficiary: feeSink,
-            fee: 0,
+            maxFee: 0,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
 
         vm.prank(attester);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 0);
 
         assertTrue(payment.isNonceUsed(n));
     }
@@ -560,14 +560,14 @@ contract CirclePaymentTest is Test {
             validBefore: block.timestamp + 10,
             nonce: "feeNoSink",
             beneficiary: address(0), // ← invalid
-            fee: 1 ether,
+            maxFee: 1 ether,
             requirePayeeSign: false
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(2 ether), signature: ""});
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.InvalidBeneficiary.selector);
-        payment.execute(intent, pd, "");
+        payment.execute(intent, pd, "", 1 ether);
     }
 
     function testInitialize_zeroAttesters() public {
@@ -595,7 +595,7 @@ contract CirclePaymentTest is Test {
             validBefore: 0,
             nonce: n,
             beneficiary: feeSink,
-            fee: fee,
+            maxFee: fee,
             requirePayeeSign: false
         });
 
@@ -603,7 +603,7 @@ contract CirclePaymentTest is Test {
 
         vm.prank(attester);
         vm.expectRevert(CirclePayment.InvalidAmount.selector);
-        payment.cancel(intent, cd);
+        payment.cancel(intent, cd, fee); // fee ≤ maxFee, but permit amount mismatched
     }
 
     function testCancel_feeAndBeneficiaryMatrix() public {
@@ -617,14 +617,14 @@ contract CirclePaymentTest is Test {
                 validBefore: 0,
                 nonce: "cancel-f0-b0",
                 beneficiary: address(0),
-                fee: 0,
+                maxFee: 0,
                 requirePayeeSign: false
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(0), signature: ""});
 
             vm.prank(attester);
-            payment.cancel(intent, pd);
+            payment.cancel(intent, pd, 0);
         }
 
         // Case 2: fee = 0, beneficiary = non-zero address → allowed
@@ -637,14 +637,14 @@ contract CirclePaymentTest is Test {
                 validBefore: 0,
                 nonce: "cancel-f0-b1",
                 beneficiary: feeSink,
-                fee: 0,
+                maxFee: 0,
                 requirePayeeSign: false
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(0), signature: ""});
 
             vm.prank(attester);
-            payment.cancel(intent, pd);
+            payment.cancel(intent, pd, 0);
         }
 
         // Case 3: fee > 0, beneficiary = zero address → should revert
@@ -657,7 +657,7 @@ contract CirclePaymentTest is Test {
                 validBefore: 0,
                 nonce: "cancel-f1-b0",
                 beneficiary: address(0),
-                fee: 5 ether,
+                maxFee: 5 ether,
                 requirePayeeSign: false
             });
 
@@ -665,7 +665,7 @@ contract CirclePaymentTest is Test {
 
             vm.prank(attester);
             vm.expectRevert(CirclePayment.InvalidBeneficiary.selector);
-            payment.cancel(intent, pd);
+            payment.cancel(intent, pd, 5 ether); // fee > 0 triggers InvalidBeneficiary
         }
 
         // Case 4: fee > 0, beneficiary = valid address → allowed
@@ -681,16 +681,89 @@ contract CirclePaymentTest is Test {
                 validBefore: 0,
                 nonce: "cancel-f1-b1",
                 beneficiary: feeSink,
-                fee: fee,
+                maxFee: fee,
                 requirePayeeSign: false
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(fee), signature: ""});
 
             vm.prank(attester);
-            payment.cancel(intent, pd);
+            payment.cancel(intent, pd, fee);
 
             assertEq(usdc.balanceOf(feeSink), before + fee);
         }
+    }
+
+    function testExecute_revertFeeExceedsMax() public {
+        uint256 value = 50 ether;
+        uint256 maxFee = 5 ether;
+        uint256 fee = 6 ether;
+
+        CirclePayment.PaymentIntent memory intent = CirclePayment.PaymentIntent({
+            from: payer,
+            to: payee,
+            value: value,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: "feeTooHigh",
+            beneficiary: feeSink,
+            maxFee: maxFee,
+            requirePayeeSign: false
+        });
+
+        CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
+
+        vm.prank(attester);
+        vm.expectRevert(abi.encodeWithSelector(CirclePayment.FeeExceedsMax.selector, fee, maxFee));
+        payment.execute(intent, pd, "", fee);
+    }
+
+    function testExecute_feeBelowMaxSucceeds() public {
+        uint256 value = 40 ether;
+        uint256 maxFee = 8 ether;
+        uint256 fee = 3 ether;
+
+        CirclePayment.PaymentIntent memory intent = CirclePayment.PaymentIntent({
+            from: payer,
+            to: payee,
+            value: value,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: "feeOK",
+            beneficiary: feeSink,
+            maxFee: maxFee,
+            requirePayeeSign: false
+        });
+
+        CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
+
+        vm.prank(attester);
+        payment.execute(intent, pd, "", fee);
+
+        assertEq(usdc.balanceOf(payee), value);
+        assertEq(usdc.balanceOf(feeSink), fee);
+    }
+
+    function testCancel_revertFeeExceedsMax() public {
+        uint256 maxFee = 4 ether;
+        uint256 fee = 5 ether;
+
+        CirclePayment.PaymentIntent memory intent = CirclePayment.PaymentIntent({
+            from: payer,
+            to: address(0),
+            value: 0,
+            validAfter: 0,
+            validBefore: 0,
+            nonce: "cancelHighFee",
+            beneficiary: feeSink,
+            maxFee: maxFee,
+            requirePayeeSign: false
+        });
+
+        CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(fee), signature: ""});
+
+        vm.prank(attester);
+        vm.expectRevert(abi.encodeWithSelector(CirclePayment.FeeExceedsMax.selector, fee, maxFee));
+        payment.cancel(intent, pd, fee);
     }
 }

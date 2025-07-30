@@ -52,18 +52,18 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         "PaymentIntent(address token,address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
     );
     bytes32 public constant PAYER_PAYMENT_INTENT_TYPEHASH = keccak256(
-        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 fee,bool requirePayeeSign)"
+        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign)"
     );
     bytes32 public constant PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH =
-        keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 fee)");
+        keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee)");
 
     //────────────── Added literal witness-type strings to move them off the stack ─────────────
     string public constant _WITNESS_PAYMENT_TYPE_STR = "PaymentIntent witness)"
-        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 fee,bool requirePayeeSign)"
+        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign)"
         "TokenPermissions(address token,uint256 amount)";
 
     string public constant _WITNESS_CANCEL_TYPE_STR = "PaymentIntent witness)"
-        "PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 fee)"
+        "PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee)"
         "TokenPermissions(address token,uint256 amount)";
 
     //─────────────────────────────── STRUCTS ───────────────────────────────
@@ -75,7 +75,7 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         uint256 validBefore;
         bytes32 nonce;
         address beneficiary;
-        uint256 fee; // total platform + gas fee (in token)
+        uint256 maxFee; // maximum platform + gas fee (in token)
         bool requirePayeeSign; // whether payee signature mandatory
     }
 
@@ -119,6 +119,7 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
     error InvalidPermit2();
     error InvalidBeneficiary();
     error RenounceOwnershipDisabled();
+    error FeeExceedsMax(uint256 fee, uint256 maxFee);
 
     //───────────────────────────── INITIALIZER ─────────────────────
     function initialize(
@@ -181,7 +182,8 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
     /// @param intent     Full payment intent struct.
     /// @param payerData  Permit2 witness + signature.
     /// @param payeeSig   Optional payee EIP‑712 signature.
-    function execute(PaymentIntent calldata intent, PayerData calldata payerData, bytes calldata payeeSig)
+    /// @param fee        The fee for the transaction.
+    function execute(PaymentIntent calldata intent, PayerData calldata payerData, bytes calldata payeeSig, uint256 fee)
         external
         nonReentrant
         whenNotPaused
@@ -191,8 +193,10 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         _validateTimeWindow(intent.validAfter, intent.validBefore);
         if (intent.to == address(0)) revert InvalidPayee();
 
+        // fee must not exceed maxFee in the signed intent
+        if (fee > intent.maxFee) revert FeeExceedsMax(fee, intent.maxFee);
         // Ensure payer provides exact amount (value + fee)
-        if (payerData.permit.permitted.amount != intent.value + intent.fee) {
+        if (payerData.permit.permitted.amount != intent.value + fee) {
             revert InvalidAmount();
         }
 
@@ -210,7 +214,7 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
             intent.to,
             intent.value,
             intent.beneficiary,
-            intent.fee
+            fee
         );
 
         // Pull funds via helper to keep local-variable count low
@@ -219,9 +223,9 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         );
 
         // Fee handling
-        if (intent.fee != 0) {
+        if (fee != 0) {
             if (intent.beneficiary == address(0)) revert InvalidBeneficiary();
-            IERC20(payerData.permit.permitted.token).safeTransfer(intent.beneficiary, intent.fee);
+            IERC20(payerData.permit.permitted.token).safeTransfer(intent.beneficiary, fee);
         }
 
         // Transfer net to payee
@@ -230,9 +234,10 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
 
     /// @notice Cancels a payment intent before it is executed.
     /// @dev Funds are pulled (value+fee) and refunded minus fee.
-    /// @param intent   PaymentIntent (only fields used: from, nonce, beneficiary, fee).
+    /// @param intent   PaymentIntent (only fields used: from, nonce, beneficiary, maxFee).
     /// @param data     Cancel permit + signature.
-    function cancel(PaymentIntent calldata intent, PayerData calldata data)
+    /// @param fee      The fee for cancellation.
+    function cancel(PaymentIntent calldata intent, PayerData calldata data, uint256 fee)
         external
         nonReentrant
         whenNotPaused
@@ -240,12 +245,13 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
     {
         _validateAndMarkNonce(intent);
 
-        if (data.permit.permitted.amount != intent.fee) revert InvalidAmount();
+        if (fee > intent.maxFee) revert FeeExceedsMax(fee, intent.maxFee);
+        if (data.permit.permitted.amount != fee) revert InvalidAmount();
 
-        emit NonceCancelled(intent.nonce, _msgSender(), intent.beneficiary, intent.fee);
+        emit NonceCancelled(intent.nonce, _msgSender(), intent.beneficiary, fee);
         address beneficiary = intent.beneficiary;
         if (intent.beneficiary == address(0)) {
-            if (intent.fee == 0) {
+            if (fee == 0) {
                 beneficiary = address(this);
             } else {
                 revert InvalidBeneficiary();
@@ -334,14 +340,14 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
                 i.validBefore,
                 i.nonce,
                 i.beneficiary,
-                i.fee,
+                i.maxFee,
                 i.requirePayeeSign
             )
         );
     }
 
     function _hashPayerCancelPaymentIntent(PaymentIntent calldata i) internal pure returns (bytes32) {
-        return keccak256(abi.encode(PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH, i.from, i.nonce, i.beneficiary, i.fee));
+        return keccak256(abi.encode(PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH, i.from, i.nonce, i.beneficiary, i.maxFee));
     }
 
     //────────────────────────── New internal helper ──────────────────────────
