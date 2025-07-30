@@ -48,7 +48,7 @@ const PERMIT_TRANSFER_FROM_WITNESS_TYPEHASH_STUB =
   "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
 
 const PAYER_PAYMENT_INTENT_TYPEHASH = keccak256(
-  toHex("PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 fee,bool requirePayeeSign)")
+  toHex("PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign)")
 );
 
 let WITNESS_PAYMENT_TYPE_STR: string;
@@ -223,7 +223,7 @@ async function main() {
               { name: "validBefore", type: "uint256" },
               { name: "nonce", type: "bytes32" },
               { name: "beneficiary", type: "address" },
-              { name: "fee", type: "uint256" },
+              { name: "maxFee", type: "uint256" },
               { name: "requirePayeeSign", type: "bool" },
           ],
       },
@@ -244,7 +244,7 @@ async function main() {
               validBefore,
               nonce: intentNonce,
               beneficiary,
-              fee: feeTokens,
+              maxFee: feeTokens,
               requirePayeeSign: false,
           },
       },
@@ -274,11 +274,12 @@ async function main() {
               validBefore,
               nonce: intentNonce,
               beneficiary,
-              fee: feeTokens,
+              maxFee: feeTokens,
               requirePayeeSign: false,
           },
           payerData,
           "0x",
+          feeTokens, // runtime fee
       ],
       account: attesterAccount,
   });
