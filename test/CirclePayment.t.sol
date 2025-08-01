@@ -148,7 +148,8 @@ contract CirclePaymentTest is Test {
             nonce: n,
             beneficiary: feeSink,
             maxFee: fee,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
@@ -175,7 +176,8 @@ contract CirclePaymentTest is Test {
             nonce: "future",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
@@ -196,7 +198,8 @@ contract CirclePaymentTest is Test {
             nonce: "exp",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
 
@@ -217,7 +220,8 @@ contract CirclePaymentTest is Test {
             nonce: n,
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1), signature: ""});
 
@@ -245,7 +249,8 @@ contract CirclePaymentTest is Test {
             nonce: "pause",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1), signature: ""});
 
@@ -270,7 +275,8 @@ contract CirclePaymentTest is Test {
             nonce: "att",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: newAttester // match new msg.sender
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1), signature: ""});
 
@@ -313,7 +319,8 @@ contract CirclePaymentTest is Test {
             nonce: n,
             beneficiary: feeSink,
             maxFee: fee,
-            requirePayeeSign: true
+            requirePayeeSign: true,
+            attester: attester
         });
 
         bytes32 typeHash = payment.PAYEE_PAYMENT_INTENT_TYPEHASH();
@@ -325,7 +332,8 @@ contract CirclePaymentTest is Test {
                 value,
                 intent.validAfter,
                 intent.validBefore,
-                n
+                n,
+                attester
             )
         );
         bytes32 digest = _computeTypedDataHash(name, version, verifyingContract, structHash);
@@ -351,7 +359,8 @@ contract CirclePaymentTest is Test {
             nonce: "badSig",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: true
+            requirePayeeSign: true,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
 
@@ -373,7 +382,8 @@ contract CirclePaymentTest is Test {
             nonce: "badLen",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: true
+            requirePayeeSign: true,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
 
@@ -412,7 +422,8 @@ contract CirclePaymentTest is Test {
             nonce: "initAdd",
             beneficiary: address(0),
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
         payment.execute(intent, pd, "", 0);
@@ -439,7 +450,8 @@ contract CirclePaymentTest is Test {
             nonce: n,
             beneficiary: feeSink,
             maxFee: fee,
-            requirePayeeSign: true
+            requirePayeeSign: true,
+            attester: attester
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
@@ -468,7 +480,8 @@ contract CirclePaymentTest is Test {
             nonce: nonce,
             beneficiary: feeSink,
             maxFee: fee,
-            requirePayeeSign: true
+            requirePayeeSign: true,
+            attester: attester
         });
 
         bytes memory sig = abi.encodePacked(bytes32(0), bytes32(0), uint8(0)); // will be ignored
@@ -512,7 +525,8 @@ contract CirclePaymentTest is Test {
             nonce: nonce,
             beneficiary: feeSink,
             maxFee: fee,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         // Deliberately wrong permit amount
@@ -541,7 +555,8 @@ contract CirclePaymentTest is Test {
             nonce: n,
             beneficiary: feeSink,
             maxFee: 0,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(1 ether), signature: ""});
 
@@ -561,7 +576,8 @@ contract CirclePaymentTest is Test {
             nonce: "feeNoSink",
             beneficiary: address(0), // ← invalid
             maxFee: 1 ether,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(2 ether), signature: ""});
 
@@ -596,7 +612,8 @@ contract CirclePaymentTest is Test {
             nonce: n,
             beneficiary: feeSink,
             maxFee: fee,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         CirclePayment.PayerData memory cd = CirclePayment.PayerData({permit: _permit(fee + 1 ether), signature: ""});
@@ -618,7 +635,8 @@ contract CirclePaymentTest is Test {
                 nonce: "cancel-f0-b0",
                 beneficiary: address(0),
                 maxFee: 0,
-                requirePayeeSign: false
+                requirePayeeSign: false,
+                attester: attester
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(0), signature: ""});
@@ -638,7 +656,8 @@ contract CirclePaymentTest is Test {
                 nonce: "cancel-f0-b1",
                 beneficiary: feeSink,
                 maxFee: 0,
-                requirePayeeSign: false
+                requirePayeeSign: false,
+                attester: attester
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(0), signature: ""});
@@ -658,7 +677,8 @@ contract CirclePaymentTest is Test {
                 nonce: "cancel-f1-b0",
                 beneficiary: address(0),
                 maxFee: 5 ether,
-                requirePayeeSign: false
+                requirePayeeSign: false,
+                attester: attester
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(5 ether), signature: ""});
@@ -682,7 +702,8 @@ contract CirclePaymentTest is Test {
                 nonce: "cancel-f1-b1",
                 beneficiary: feeSink,
                 maxFee: fee,
-                requirePayeeSign: false
+                requirePayeeSign: false,
+                attester: attester
             });
 
             CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(fee), signature: ""});
@@ -708,7 +729,8 @@ contract CirclePaymentTest is Test {
             nonce: "feeTooHigh",
             beneficiary: feeSink,
             maxFee: maxFee,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
@@ -732,7 +754,8 @@ contract CirclePaymentTest is Test {
             nonce: "feeOK",
             beneficiary: feeSink,
             maxFee: maxFee,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(value + fee), signature: ""});
@@ -757,7 +780,8 @@ contract CirclePaymentTest is Test {
             nonce: "cancelHighFee",
             beneficiary: feeSink,
             maxFee: maxFee,
-            requirePayeeSign: false
+            requirePayeeSign: false,
+            attester: attester
         });
 
         CirclePayment.PayerData memory pd = CirclePayment.PayerData({permit: _permit(fee), signature: ""});

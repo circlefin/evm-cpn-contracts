@@ -48,7 +48,9 @@ const PERMIT_TRANSFER_FROM_WITNESS_TYPEHASH_STUB =
   "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
 
 const PAYER_PAYMENT_INTENT_TYPEHASH = keccak256(
-  toHex("PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign)")
+  toHex(
+    "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign,address attester)"
+  )
 );
 
 let WITNESS_PAYMENT_TYPE_STR: string;
@@ -139,6 +141,7 @@ async function main() {
               { type: "address" },
               { type: "uint256" },
               { type: "bool" },
+              { type: "address" },
           ],
           [
               PAYER_PAYMENT_INTENT_TYPEHASH,
@@ -151,6 +154,7 @@ async function main() {
               beneficiary,
               feeTokens,
               false,
+              attesterAccount.address,
           ]
       )
   );
@@ -225,6 +229,7 @@ async function main() {
               { name: "beneficiary", type: "address" },
               { name: "maxFee", type: "uint256" },
               { name: "requirePayeeSign", type: "bool" },
+              { name: "attester", type: "address" },
           ],
       },
       primaryType: "PermitWitnessTransferFrom",
@@ -246,6 +251,7 @@ async function main() {
               beneficiary,
               maxFee: feeTokens,
               requirePayeeSign: false,
+              attester: attesterAccount.address,
           },
       },
   });
@@ -261,30 +267,46 @@ async function main() {
       signature: payerSig,
   };
 
+  const baseFee = await publicClient.getGasPrice();
+  const maxPriorityFeePerGas = 2_000_000_000n; // 2 gwei tip
+  const maxFeePerGas = baseFee + maxPriorityFeePerGas;
+
+  const execArgs = [
+    {
+      from: payerAccount.address,
+      to: payee,
+      value: amountTokens,
+      validAfter,
+      validBefore,
+      nonce: intentNonce,
+      beneficiary,
+      maxFee: feeTokens,
+      requirePayeeSign: false,
+      attester: attesterAccount.address,
+    },
+    payerData,
+    "0x",
+    feeTokens,
+  ] as const;
+
   const { request } = await publicClient.simulateContract({
       address: circlePayment,
       abi: circlePaymentAbi,
       functionName: "execute",
-      args: [
-          {
-              from: payerAccount.address,
-              to: payee,
-              value: amountTokens,
-              validAfter,
-              validBefore,
-              nonce: intentNonce,
-              beneficiary,
-              maxFee: feeTokens,
-              requirePayeeSign: false,
-          },
-          payerData,
-          "0x",
-          feeTokens, // runtime fee
-      ],
+      args: execArgs,
       account: attesterAccount,
   });
 
-  const txHash = await walletClient.writeContract(request);
+  const txHash = await walletClient.writeContract({
+    address: circlePayment,
+    abi: circlePaymentAbi,
+    functionName: "execute",
+    args: execArgs,
+    account: attesterAccount,
+    gas: request.gas,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
+  });
   console.log("payment tx:", txHash);
 }
 

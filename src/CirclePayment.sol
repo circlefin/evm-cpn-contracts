@@ -49,17 +49,17 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
 
     // Typed data hashes (see design doc p.4‑6)
     bytes32 public constant PAYEE_PAYMENT_INTENT_TYPEHASH = keccak256(
-        "PaymentIntent(address token,address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
+        "PaymentIntent(address token,address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address attester)"
     );
     bytes32 public constant PAYER_PAYMENT_INTENT_TYPEHASH = keccak256(
-        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign)"
+        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign,address attester)"
     );
     bytes32 public constant PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH =
         keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee)");
 
     //────────────── Added literal witness-type strings to move them off the stack ─────────────
     string public constant _WITNESS_PAYMENT_TYPE_STR = "PaymentIntent witness)"
-        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign)"
+        "PaymentIntent(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce,address beneficiary,uint256 maxFee,bool requirePayeeSign,address attester)"
         "TokenPermissions(address token,uint256 amount)";
 
     string public constant _WITNESS_CANCEL_TYPE_STR = "PaymentIntent witness)"
@@ -77,6 +77,7 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         address beneficiary;
         uint256 maxFee; // maximum platform + gas fee (in token)
         bool requirePayeeSign; // whether payee signature mandatory
+        address attester; // expected msg.sender
     }
 
     struct PayerData {
@@ -189,6 +190,7 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         whenNotPaused
         onlyAttester
     {
+        if (msg.sender != intent.attester) revert InvalidAttester(msg.sender);
         _validateAndMarkNonce(intent);
         _validateTimeWindow(intent.validAfter, intent.validBefore);
         if (intent.to == address(0)) revert InvalidPayee();
@@ -243,6 +245,7 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
         whenNotPaused
         onlyAttester
     {
+        if (msg.sender != intent.attester) revert InvalidAttester(msg.sender);
         _validateAndMarkNonce(intent);
 
         if (fee > intent.maxFee) revert FeeExceedsMax(fee, intent.maxFee);
@@ -298,7 +301,8 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
                 intent.value,
                 intent.validAfter,
                 intent.validBefore,
-                intent.nonce
+                intent.nonce,
+                intent.attester
             )
         );
         bytes32 digest = _messageHash(structHash);
@@ -341,7 +345,8 @@ contract CirclePayment is Initializable, Ownable2Step, Pausable, ReentrancyGuard
                 i.nonce,
                 i.beneficiary,
                 i.maxFee,
-                i.requirePayeeSign
+                i.requirePayeeSign,
+                i.attester
             )
         );
     }
