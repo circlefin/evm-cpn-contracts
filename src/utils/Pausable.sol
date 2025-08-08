@@ -20,73 +20,110 @@ pragma solidity 0.8.24;
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
-/**
- * @title Pausable
- * @dev Non-upgradeable version of Pausable with dedicated pauser role.
- */
+/// @title Pausable
+/// @notice Adds pausing functionality with a dedicated pauser role
+/// @dev Intended to be inherited by contracts requiring pause functionality
 abstract contract Pausable is Context, Ownable2Step {
+    /// @dev Internal state tracking whether the contract is paused
     bool private _paused;
+
+    /// @dev Address assigned with the pauser role
     address private _pauser;
 
+    /// @notice Emitted when the contract is paused
+    /// @param account Address that triggered the pause
     event Paused(address account);
+
+    /// @notice Emitted when the contract is unpaused
+    /// @param account Address that triggered the unpause
     event Unpaused(address account);
+
+    /// @notice Emitted when the pauser role is transferred
+    /// @param previousPauser The address of the old pauser
+    /// @param newPauser The address of the new pauser
     event PauserTransferred(address indexed previousPauser, address indexed newPauser);
 
+    /// @notice Reverts when the contract is paused but should not be
     error EnforcedPause();
+
+    /// @notice Reverts when the contract is not paused but should be
     error ExpectedPause();
+
+    /// @notice Reverts when caller is not the current pauser
+    /// @param caller The unauthorized caller
     error NotPauser(address caller);
+
+    /// @notice Reverts when assigning the same pauser again
+    /// @param pauser The duplicated pauser address
     error SamePauser(address pauser);
+
+    /// @notice Reverts when the new pauser is the zero address
     error PauserZeroAddress();
 
+    /// @notice Modifier to allow function execution only when contract is not paused
     modifier whenNotPaused() {
         _requireNotPaused();
         _;
     }
 
+    /// @notice Modifier to allow function execution only when contract is paused
     modifier whenPaused() {
         _requirePaused();
         _;
     }
 
+    /// @notice Modifier to restrict function to the current pauser
+    /// @dev Reverts with NotPauser if msg.sender is not the current pauser
     modifier onlyPauser() {
         if (_msgSender() != _pauser) revert NotPauser(_msgSender());
         _;
     }
 
-    /**
-     * @dev Internal helper – should be called in the constructor to assign the initial pauser.
-     */
+    /// @dev Initializes the pauser role at deployment
+    /// @param initialPauser The initial address assigned as pauser
     function _initializePauser(address initialPauser) internal {
         _paused = false;
-        _pauser = initialPauser;
+        _setPauser(initialPauser);
     }
 
-    function paused() public view virtual returns (bool) {
+    /// @notice Returns whether the contract is currently paused
+    /// @return True if paused, false otherwise
+    function paused() public view returns (bool) {
         return _paused;
     }
 
+    /// @notice Returns the current pauser address
+    /// @return The address with pauser role
     function pauser() public view returns (address) {
         return _pauser;
     }
 
-    function _requireNotPaused() internal view virtual {
+    /// @dev Reverts if the contract is paused
+    function _requireNotPaused() internal view {
         if (paused()) revert EnforcedPause();
     }
 
-    function _requirePaused() internal view virtual {
+    /// @dev Reverts if the contract is not paused
+    function _requirePaused() internal view {
         if (!paused()) revert ExpectedPause();
     }
 
+    /// @notice Triggers the paused state
+    /// @dev Callable only by the pauser when not already paused
     function pause() external onlyPauser whenNotPaused {
         _paused = true;
         emit Paused(_msgSender());
     }
 
+    /// @notice Lifts the paused state
+    /// @dev Callable only by the pauser when currently paused
     function unpause() external onlyPauser whenPaused {
         _paused = false;
         emit Unpaused(_msgSender());
     }
 
+    /// @dev Internal function to update the pauser role
+    /// @param newPauser The new address to assign as pauser
     function _setPauser(address newPauser) internal {
         address current = _pauser;
         if (current == newPauser) revert SamePauser(current);
@@ -94,11 +131,16 @@ abstract contract Pausable is Context, Ownable2Step {
         emit PauserTransferred(current, newPauser);
     }
 
+    /// @notice Updates the pauser address
+    /// @dev Callable only by the contract owner
+    /// @param newPauser Address to assign as the new pauser
     function updatePauser(address newPauser) external onlyOwner {
         if (newPauser == address(0)) revert PauserZeroAddress();
         _setPauser(newPauser);
     }
 
+    /// @notice Removes the pauser role
+    /// @dev Sets the pauser to the zero address. Callable only by the contract owner.
     function removePauser() external onlyOwner {
         _setPauser(address(0));
     }

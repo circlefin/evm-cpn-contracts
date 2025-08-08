@@ -18,92 +18,125 @@
 pragma solidity 0.8.24;
 
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
-/**
- * @title Rescuable
- */
+/// @title Rescuable
+/// @notice Enables recovery of ERC20 or native tokens by an authorized rescuer
+/// @dev Designed for use in contracts that may receive stuck funds
 abstract contract Rescuable is Context, Ownable2Step {
     using SafeERC20 for IERC20;
 
+    /// @dev Address assigned as the current rescuer
     address private _rescuer;
 
-    // EIP‑6900 canonical native token address (used only for event clarity)
+    /// @dev Common placeholder used to represent native tokens (e.g., ETH) in logs and offchain systems
     address private constant NATIVE_TOKEN_ADDRESS = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
+    /// @notice Reverts when caller is not the current rescuer
+    /// @param caller Unauthorized caller
     error NotRescuer(address caller);
+
+    /// @notice Reverts when the new rescuer is the same as current
+    /// @param addr Duplicate rescuer address
     error SameRescuer(address addr);
+
+    /// @notice Reverts when rescuer address is zero
     error RescuerZeroAddress();
 
+    /// @notice Reverts when attempting to rescue from zero token address
     error InvalidRescueTokenAddress();
+
+    /// @notice Reverts when destination address is zero
     error InvalidRescueToAddress();
+
+    /// @notice Reverts when attempting to rescue zero amount
     error InvalidRescueAmount();
+
+    /// @notice Reverts if contract balance is insufficient for rescue
     error RescueAmountExceedsBalance();
+
+    /// @notice Reverts if native token transfer fails
     error NativeTransferFailed();
 
+    /// @notice Emitted when tokens are rescued from the contract
+    /// @param token Token address (use NATIVE_TOKEN_ADDRESS for native tokens)
+    /// @param sender Initiator of the rescue
+    /// @param to Recipient of rescued tokens
+    /// @param value Amount rescued
     event TokensRescued(address indexed token, address indexed sender, address indexed to, uint256 value);
-    event RescuerChanged(address indexed oldRescuer, address indexed newRescuer);
 
+    /// @notice Emitted when the rescuer role is transferred
+    /// @param previousRescuer Address of the previous rescuer
+    /// @param newRescuer Address of the new rescuer
+    event RescuerTransferred(address indexed previousRescuer, address indexed newRescuer);
+
+    /// @notice Modifier to restrict access to the current rescuer
+    /// @dev Reverts with NotRescuer if msg.sender is not rescuer
     modifier onlyRescuer() {
         if (_msgSender() != _rescuer) revert NotRescuer(_msgSender());
         _;
     }
 
+    /// @dev Initializes the rescuer role
+    /// @param initialRescuer Address to set as initial rescuer
     function _initializeRescuer(address initialRescuer) internal {
-        if (initialRescuer == address(0)) revert RescuerZeroAddress();
-        _rescuer = initialRescuer;
-        emit RescuerChanged(address(0), initialRescuer);
+        _setRescuer(initialRescuer);
     }
 
+    /// @notice Returns the current rescuer address
+    /// @return Address with rescuer privileges
     function rescuer() public view returns (address) {
         return _rescuer;
     }
 
+    /// @notice Updates the rescuer address
+    /// @dev Callable only by the contract owner
+    /// @param newRescuer Address to assign as new rescuer
     function updateRescuer(address newRescuer) external onlyOwner {
         if (newRescuer == address(0)) revert RescuerZeroAddress();
         _setRescuer(newRescuer);
     }
 
+    /// @notice Removes the rescuer role
+    /// @dev Callable only by the contract owner
     function removeRescuer() external onlyOwner {
         _setRescuer(address(0));
     }
 
+    /// @notice Allows rescuer to transfer ERC20 tokens from contract
+    /// @param token ERC20 token to rescue
+    /// @param to Recipient address
+    /// @param amount Amount to transfer
     function rescueERC20(IERC20 token, address to, uint256 amount) external onlyRescuer {
         if (address(token) == address(0)) revert InvalidRescueTokenAddress();
-        _rescueERC20(token, to, amount);
+        if (to == address(0)) revert InvalidRescueToAddress();
+        if (amount == 0) revert InvalidRescueAmount();
+
+        token.safeTransfer(to, amount);
+        emit TokensRescued(address(token), _msgSender(), to, amount);
     }
 
+    /// @notice Allows rescuer to transfer native tokens from contract
+    /// @param to Recipient address
+    /// @param amount Amount to transfer
     function rescueNativeToken(address to, uint256 amount) external onlyRescuer {
         if (to == address(0)) revert InvalidRescueToAddress();
         if (amount == 0) revert InvalidRescueAmount();
 
-        uint256 bal = address(this).balance;
-        if (bal < amount) revert RescueAmountExceedsBalance();
-        // slither-disable-next-line arbitrary-send-eth
         (bool ok,) = to.call{value: amount}("");
         if (!ok) revert NativeTransferFailed();
 
         emit TokensRescued(NATIVE_TOKEN_ADDRESS, _msgSender(), to, amount);
     }
 
-    function _rescueERC20(IERC20 token, address to, uint256 amount) private {
-        if (to == address(0)) revert InvalidRescueToAddress();
-        if (amount == 0) revert InvalidRescueAmount();
-
-        uint256 bal = token.balanceOf(address(this));
-        if (bal < amount) revert RescueAmountExceedsBalance();
-
-        token.safeTransfer(to, amount);
-        emit TokensRescued(address(token), _msgSender(), to, amount);
-    }
-
+    /// @dev Internal function to update rescuer and emit event
+    /// @param newRescuer Address to assign as rescuer
     function _setRescuer(address newRescuer) private {
         if (newRescuer == _rescuer) revert SameRescuer(newRescuer);
         address old = _rescuer;
         _rescuer = newRescuer;
-        emit RescuerChanged(old, newRescuer);
+        emit RescuerTransferred(old, newRescuer);
     }
 }
