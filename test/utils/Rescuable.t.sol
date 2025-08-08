@@ -117,9 +117,9 @@ contract RescuableTest is Test {
         vm.expectRevert(Rescuable.InvalidRescueAmount.selector);
         h.rescueERC20(tkn, to, 0);
 
-        // exceeds balance
+        // transfer failure due to insufficient balance
         vm.prank(rescuer);
-        vm.expectRevert(Rescuable.RescueAmountExceedsBalance.selector);
+        vm.expectRevert(); // now handled by SafeERC20
         h.rescueERC20(tkn, to, 1);
     }
 
@@ -133,7 +133,6 @@ contract RescuableTest is Test {
         assertEq(to.balance, 2 ether);
     }
 
-    /* ---------- rescue native negative ---------- */
     function test_rescueNative_invalidInputs() public {
         // to zero
         vm.prank(rescuer);
@@ -145,9 +144,9 @@ contract RescuableTest is Test {
         vm.expectRevert(Rescuable.InvalidRescueAmount.selector);
         h.rescueNativeToken(to, 0);
 
-        // exceeds balance
+        // insufficient balance, call fails
         vm.prank(rescuer);
-        vm.expectRevert(Rescuable.RescueAmountExceedsBalance.selector);
+        vm.expectRevert(Rescuable.NativeTransferFailed.selector);
         h.rescueNativeToken(to, 1);
     }
 
@@ -163,7 +162,7 @@ contract RescuableTest is Test {
     function test_updateRescuer_byOwner() public {
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Rescuable.RescuerChanged(rescuer, other);
+        emit Rescuable.RescuerTransferred(rescuer, other);
         h.updateRescuer(other);
         assertEq(h.rescuer(), other);
     }
@@ -190,7 +189,7 @@ contract RescuableTest is Test {
     function test_removeRescuer_success() public {
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Rescuable.RescuerChanged(rescuer, address(0));
+        emit Rescuable.RescuerTransferred(rescuer, address(0));
         h.removeRescuer();
         assertEq(h.rescuer(), address(0));
 

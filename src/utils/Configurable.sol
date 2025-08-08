@@ -16,66 +16,64 @@
  */
 pragma solidity 0.8.24;
 
-// ───────────────────────────────────────── IMPORTS ──────────────────────────────────────────
-
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
-/**
- * @title Configurable
- *
- * @notice   Upgrade-safe helper providing a dedicated *configurator* role.
- *           so downstream contracts can gate sensitive parameter changes with `onlyConfigurator`.
- */
+/// @title Configurable
+/// @notice Provides a configurator role for privileged parameter updates
+/// @dev Intended to be inherited by contracts requiring off-owner configuration access
 abstract contract Configurable is Context, Ownable2Step {
-    /*──────────────────────────── STATE ────────────────────────────*/
+    /// @dev Address assigned with the configurator role
     address private _configurator;
 
-    /*──────────────────────────── ERRORS ───────────────────────────*/
+    /// @notice Reverts when caller is not configurator
     error NotConfigurator(address caller);
+    /// @notice Reverts when attempting to set the same configurator
     error SameConfigurator(address addr);
+    /// @notice Reverts when new configurator address is zero
     error ConfiguratorZeroAddress();
 
-    /*──────────────────────────── EVENTS ───────────────────────────*/
+    /// @notice Emitted when the configurator role is transferred
+    /// @param previousConfigurator Address of the previous configurator
+    /// @param newConfigurator Address of the new configurator
     event ConfiguratorTransferred(address indexed previousConfigurator, address indexed newConfigurator);
 
-    /*──────────────────────────── MODIFIERS ────────────────────────*/
-    /// @notice Restricts the caller to the current **configurator**.
+    /// @notice Restricts function to be called only by the current configurator
+    /// @dev Reverts with NotConfigurator if caller is not _configurator
     modifier onlyConfigurator() {
         if (_msgSender() != _configurator) revert NotConfigurator(_msgSender());
         _;
     }
 
-    /*────────────────────────── CONSTRUCTOR HELPER ─────────────────*/
+    /// @dev Initializes the configurator role
+    /// @param initialConfigurator Address to assign as initial configurator
     function _initializeConfigurator(address initialConfigurator) internal {
-        _updateConfiguratorInternal(initialConfigurator);
+        _setConfigurator(initialConfigurator);
     }
 
-    /*──────────────────────────── GETTERS ──────────────────────────*/
+    /// @notice Returns the current configurator address
+    /// @return Address assigned as configurator
     function configurator() public view returns (address) {
         return _configurator;
     }
 
-    /*───────────────────────── MUTATIONS (owner) ───────────────────*/
-    /**
-     * @notice Assign a **new configurator**.
-     * @dev    Callable only by the contract owner. Set to `address(0)` to *remove* the role.
-     */
+    /// @notice Assigns a new configurator
+    /// @dev Callable only by the contract owner. Reverts if newConfigurator is address(0)
+    /// @param newConfigurator Address to assign as new configurator
     function updateConfigurator(address newConfigurator) external onlyOwner {
         if (newConfigurator == address(0)) revert ConfiguratorZeroAddress();
-        _updateConfiguratorInternal(newConfigurator);
+        _setConfigurator(newConfigurator);
     }
 
-    /**
-     * @notice Removes the configurator role (sets it to address(0)).
-     * @dev    Callable only by the contract owner.
-     */
+    /// @notice Removes the configurator role
+    /// @dev Sets configurator to address(0). Callable only by the contract owner.
     function removeConfigurator() external onlyOwner {
-        _updateConfiguratorInternal(address(0));
+        _setConfigurator(address(0));
     }
 
-    /*──────────────────────── INTERNAL HELPERS ─────────────────────*/
-    function _updateConfiguratorInternal(address newConfigurator) internal {
+    /// @dev Internal function to update configurator role and emit event
+    /// @param newConfigurator Address to assign as new configurator
+    function _setConfigurator(address newConfigurator) internal {
         if (newConfigurator == _configurator) revert SameConfigurator(newConfigurator);
 
         address old = _configurator;

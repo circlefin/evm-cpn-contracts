@@ -23,31 +23,32 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 /// @title Create2Factory
 /// @notice Deploys a contract deterministically using CREATE2
 contract Create2Factory is Ownable2Step {
-    event FactoryDeployed(address indexed deployed, address indexed caller, bytes32 indexed salt);
-
-    /// @notice Custom errors
+    /// @notice Reverts when bytecode is empty
     error EmptyBytecode();
+    /// @notice Reverts when deployment fails
     error DeploymentFailed();
 
-    // slither-disable-next-line dead-code, solhint-disable-next-line no-empty-blocks
+    /// @notice Emitted when a contract is deployed
+    event FactoryDeployed(address indexed deployed, bytes32 indexed salt);
+
+    /// @notice Initializes ownership to the deployer
     constructor() Ownable(msg.sender) {}
 
     /// @notice Deploy a contract using CREATE2
-    /// @param salt Unique salt to ensure deterministic deployment within sender namespace
+    /// @param salt Unique salt to ensure deterministic deployment
     /// @param bytecode Full creation bytecode (including constructor args)
     /// @return deployed The address of the deployed contract
     function deploy(bytes32 salt, bytes calldata bytecode) external onlyOwner returns (address deployed) {
-        deployed = _deploy(msg.sender, salt, bytecode);
+        deployed = _deploy(salt, bytecode);
     }
 
-    /// @notice Predict the deployment address using sender + salt + bytecode
+    /// @notice Predict the deployment address using salt + bytecode
     /// @param salt User-defined salt
     /// @param bytecode Creation bytecode
     /// @return predicted Deterministic deployment address
     function getAddress(bytes32 salt, bytes calldata bytecode) external view returns (address predicted) {
-        bytes32 mixedSalt = keccak256(abi.encodePacked(msg.sender, salt));
         bytes32 hash = keccak256(bytecode);
-        predicted = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), mixedSalt, hash)))));
+        predicted = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, hash)))));
     }
 
     /// @notice Deploy a contract and immediately perform multiple calls to it
@@ -60,7 +61,7 @@ contract Create2Factory is Ownable2Step {
         onlyOwner
         returns (address deployed)
     {
-        deployed = _deploy(msg.sender, salt, bytecode);
+        deployed = _deploy(salt, bytecode);
         uint256 len = calls.length;
         for (uint256 i = 0; i < len;) {
             // slither-disable-next-line low-level-calls, solhint-disable-next-line avoid-low-level-calls
@@ -79,18 +80,17 @@ contract Create2Factory is Ownable2Step {
     }
 
     /// @dev Internal deploy helper used by both deploy() and deployAndMultiCall()
-    function _deploy(address caller, bytes32 salt, bytes calldata bytecode) internal returns (address deployed) {
+    function _deploy(bytes32 salt, bytes calldata bytecode) internal returns (address deployed) {
         if (bytecode.length == 0) revert EmptyBytecode();
 
-        bytes32 mixedSalt = keccak256(abi.encodePacked(caller, salt));
         bytes memory memcode = bytecode;
         assembly {
-            deployed := create2(0, add(memcode, 0x20), mload(memcode), mixedSalt)
+            deployed := create2(0, add(memcode, 0x20), mload(memcode), salt)
         }
 
         // move this check out of assembly
         if (deployed.code.length == 0) revert DeploymentFailed();
 
-        emit FactoryDeployed(deployed, caller, salt);
+        emit FactoryDeployed(deployed, salt);
     }
 }
