@@ -121,10 +121,10 @@ abstract contract Rescuable is Context, Ownable2Step {
     /// @notice Allows rescuer to transfer native tokens from contract
     /// @param to Recipient address
     /// @param amount Amount to transfer
-    function rescueNativeToken(address to, uint256 amount) external onlyRescuer {
+    function rescueNative(address to, uint256 amount) external onlyRescuer {
         if (to == address(0)) revert InvalidRescueToAddress();
         if (amount == 0) revert InvalidRescueAmount();
-
+        // slither-disable-next-line arbitrary-send-eth
         (bool ok,) = to.call{value: amount}("");
         if (!ok) revert NativeTransferFailed();
 

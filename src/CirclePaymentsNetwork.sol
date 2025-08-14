@@ -30,9 +30,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-/// @title CirclePayments
+/// @title CirclePaymentsNetwork
 /// @notice Circle Payments Network onchain payment contract.
-contract CirclePayments is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
+contract CirclePaymentsNetwork is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
     using SafeERC20 for IERC20;
 
     /// @notice EIP-1271 magic value returned by valid contract signatures
@@ -43,7 +43,7 @@ contract CirclePayments is Initializable, Ownable2Step, Pausable, ReentrancyGuar
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice EIP-712 domain separator name hash
-    bytes32 private constant _NAME_HASH = keccak256("CirclePayments");
+    bytes32 private constant _NAME_HASH = keccak256("CirclePaymentsNetwork");
 
     /// @notice EIP-712 domain separator version hash
     bytes32 private constant _VERSION_HASH = keccak256("1");
@@ -207,7 +207,7 @@ contract CirclePayments is Initializable, Ownable2Step, Pausable, ReentrancyGuar
     // slither-disable-next-line dead-code, solhint-disable-next-line no-empty-blocks
     /// @notice Initializes ownership to the deployer
     /// @dev This contract is not upgradeable; constructor sets the initial owner
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable(_msgSender()) {}
 
     /// @notice Modifier to check if the caller is an attester
     /// @dev Reverts if the caller is not an attester
@@ -249,8 +249,18 @@ contract CirclePayments is Initializable, Ownable2Step, Pausable, ReentrancyGuar
         whenNotPaused
         onlyAttester
     {
-        if (msg.sender != intent.attester) revert InvalidAttester(msg.sender);
+        if (_msgSender() != intent.attester) revert InvalidAttester(_msgSender());
         _validateAndMarkNonce(intent);
+        emit NonceUsed(
+            intent.nonce,
+            _msgSender(),
+            payerData.permit.permitted.token,
+            intent.from,
+            intent.to,
+            intent.value,
+            intent.beneficiary,
+            fee
+        );
         _validateTimeWindow(intent.validAfter, intent.validBefore);
         if (intent.to == address(0)) revert InvalidPayee();
 
@@ -266,17 +276,6 @@ contract CirclePayments is Initializable, Ownable2Step, Pausable, ReentrancyGuar
             _requireValidPayeeSig(intent, payerData.permit.permitted.token, payeeSig);
             emit PayeeVerified(intent.nonce, intent.to);
         }
-
-        emit NonceUsed(
-            intent.nonce,
-            _msgSender(),
-            payerData.permit.permitted.token,
-            intent.from,
-            intent.to,
-            intent.value,
-            intent.beneficiary,
-            fee
-        );
 
         // Pull funds (value + fee)
         _pullViaPermit2(
@@ -311,13 +310,11 @@ contract CirclePayments is Initializable, Ownable2Step, Pausable, ReentrancyGuar
         whenNotPaused
         onlyAttester
     {
-        if (msg.sender != intent.attester) revert InvalidAttester(msg.sender);
+        if (_msgSender() != intent.attester) revert InvalidAttester(_msgSender());
         _validateAndMarkNonce(intent);
-
-        if (fee > intent.maxFee) revert FeeExceedsMax(fee, intent.maxFee);
-        if (data.permit.permitted.amount != fee) revert InvalidAmount();
-
         emit NonceCancelled(intent.nonce, _msgSender(), intent.beneficiary, fee);
+        if (fee > intent.maxFee) revert FeeExceedsMax(fee, intent.maxFee);
+        if (data.permit.permitted.amount != intent.maxFee) revert InvalidAmount();
         address beneficiary = intent.beneficiary;
         if (intent.beneficiary == address(0)) {
             if (fee == 0) {
