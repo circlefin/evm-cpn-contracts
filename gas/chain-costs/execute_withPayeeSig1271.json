@@ -1,0 +1,36 @@
+{
+  "chainPriceConfigs": {
+    "ETH": {
+      "gasPriceGwei": 2.2,
+      "nativeTokenPriceUSD": 2720
+    },
+    "POLYGON": {
+      "gasPriceGwei": 30,
+      "nativeTokenPriceUSD": 0.3
+    },
+    "ARB": {
+      "gasPriceGwei": 0.01,
+      "nativeTokenPriceUSD": 2720
+    }
+  },
+  "testCases": {
+    "execute_withPayeeSig1271": {
+      "ETH": {
+        "gasUsed": 147285,
+        "totalNativeTokensUsed": 0.000324027,
+        "totalPriceUSD": 0.88135344
+      },
+      "POLYGON": {
+        "gasUsed": 147285,
+        "totalNativeTokensUsed": 0.00441855,
+        "totalPriceUSD": 0.0013255650000000001
+      },
+      "ARB": {
+        "gasUsed": 147285,
+        "totalNativeTokensUsed": 0.0000014728500061400002,
+        "l1FeeNativeTokens": 0.00000614,
+        "totalPriceUSD": 0.0040061520167008
+      }
+    }
+  }
+}
