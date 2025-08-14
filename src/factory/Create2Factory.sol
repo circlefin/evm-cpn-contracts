@@ -32,7 +32,7 @@ contract Create2Factory is Ownable2Step {
     event FactoryDeployed(address indexed deployed, bytes32 indexed salt);
 
     /// @notice Initializes ownership to the deployer
-    constructor() Ownable(msg.sender) {}
+    constructor(address initialOwner) Ownable(initialOwner) {}
 
     /// @notice Deploy a contract using CREATE2
     /// @param salt Unique salt to ensure deterministic deployment

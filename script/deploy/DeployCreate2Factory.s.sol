@@ -19,6 +19,7 @@ pragma solidity 0.8.24;
 
 import {Create2Factory} from "../../src/factory/Create2Factory.sol";
 import {Script} from "forge-std/src/Script.sol";
+import {console2} from "forge-std/src/console2.sol";
 
 // forge script script/deploy/DeployCreate2Factory.s.sol \
 //   --rpc-url $BLOCKCHAIN_RPC_URL \
@@ -28,9 +29,23 @@ contract DeployCreate2FactoryScript is Script {
     address private deployer;
 
     function deployCreate2Factory(address _deployer) internal returns (Create2Factory _create2Factory) {
+        bytes memory bytecode = abi.encodePacked(
+            type(Create2Factory).creationCode,
+            abi.encode(_deployer) // constructor(address initialOwner)
+        );
+
+        bytes32 salt = keccak256(abi.encodePacked(vm.envString("CREATE2_FACTORY_SALT")));
+        address deployed;
+
         vm.startBroadcast(_deployer);
-        _create2Factory = new Create2Factory();
+        assembly {
+            deployed := create2(0, add(bytecode, 0x20), mload(bytecode), salt)
+        }
+        require(deployed != address(0), "Create2Factory deployment failed");
         vm.stopBroadcast();
+
+        _create2Factory = Create2Factory(deployed);
+        console2.log("Create2Factory deployed at:", deployed);
     }
 
     function setUp() public {

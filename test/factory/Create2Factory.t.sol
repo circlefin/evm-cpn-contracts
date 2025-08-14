@@ -38,7 +38,7 @@ contract Create2FactoryTest is Test {
     bytes32 internal sender;
 
     function setUp() public {
-        factory = new Create2Factory();
+        factory = new Create2Factory(address(this));
         sender = keccak256("test-psp"); // fixed sender for test namespace
     }
 

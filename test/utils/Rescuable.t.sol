@@ -129,7 +129,7 @@ contract RescuableTest is Test {
         vm.prank(rescuer);
         vm.expectEmit(true, true, true, true);
         emit Rescuable.TokensRescued(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, rescuer, to, 2 ether);
-        h.rescueNativeToken(to, 2 ether);
+        h.rescueNative(to, 2 ether);
         assertEq(to.balance, 2 ether);
     }
 
@@ -137,17 +137,17 @@ contract RescuableTest is Test {
         // to zero
         vm.prank(rescuer);
         vm.expectRevert(Rescuable.InvalidRescueToAddress.selector);
-        h.rescueNativeToken(address(0), 1);
+        h.rescueNative(address(0), 1);
 
         // amount zero
         vm.prank(rescuer);
         vm.expectRevert(Rescuable.InvalidRescueAmount.selector);
-        h.rescueNativeToken(to, 0);
+        h.rescueNative(to, 0);
 
         // insufficient balance, call fails
         vm.prank(rescuer);
         vm.expectRevert(Rescuable.NativeTransferFailed.selector);
-        h.rescueNativeToken(to, 1);
+        h.rescueNative(to, 1);
     }
 
     function test_rescueNative_transferFail() public {
@@ -155,7 +155,7 @@ contract RescuableTest is Test {
         vm.deal(address(h), 1 ether);
         vm.prank(rescuer);
         vm.expectRevert(Rescuable.NativeTransferFailed.selector);
-        h.rescueNativeToken(address(bad), 1 ether);
+        h.rescueNative(address(bad), 1 ether);
     }
 
     /* ---------- update rescuer ---------- */

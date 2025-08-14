@@ -17,7 +17,7 @@
  */
 pragma solidity 0.8.24;
 
-import {CirclePayments} from "../../src/CirclePayments.sol";
+import {CirclePaymentsNetwork} from "../../src/CirclePaymentsNetwork.sol";
 import {Create2Factory} from "../../src/factory/Create2Factory.sol";
 import {IMinimalPermit2} from "../../src/interfaces/IMinimalPermit2.sol";
 import {Script} from "forge-std/src/Script.sol";
@@ -25,11 +25,11 @@ import {console2} from "forge-std/src/console2.sol";
 
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-// forge script script/deploy/DeployCirclePaymentsScript.s.sol \
+// forge script script/deploy/DeployCirclePaymentsNetworkScript.s.sol \
 //   --rpc-url $BLOCKCHAIN_RPC_URL \
 //   --private-key $DEPLOYER_PRIVATE_KEY \
 //   --broadcast
-contract DeployCirclePaymentsScript is Script {
+contract DeployCirclePaymentsNetworkScript is Script {
     /// ─────────── env vars ───────────
     address private deployer;
 
@@ -72,15 +72,15 @@ contract DeployCirclePaymentsScript is Script {
         vm.startBroadcast(deployer);
 
         bytes memory initData = abi.encodeCall(
-            CirclePayments.initialize,
+            CirclePaymentsNetwork.initialize,
             (IMinimalPermit2(permit2Addr), ownerAddr, rescuerAddr, pauserAddr, configuratorAddr, attesters)
         );
 
         bytes[] memory calls = new bytes[](1);
         calls[0] = initData;
 
-        address circlePayment = factory.deployAndMultiCall(salt, type(CirclePayments).creationCode, calls);
-        console2.log("CirclePayments deployed at:", circlePayment);
+        address circlePayment = factory.deployAndMultiCall(salt, type(CirclePaymentsNetwork).creationCode, calls);
+        console2.log("CirclePaymentsNetwork deployed at:", circlePayment);
 
         vm.stopBroadcast();
     }
