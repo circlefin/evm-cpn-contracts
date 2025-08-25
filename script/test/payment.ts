@@ -15,7 +15,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
 import { config } from "dotenv";
-import { abi as circlePaymentAbi } from "../../out/CirclePaymentsNetwork.sol/CirclePaymentsNetwork.json";
+import { abi as circlePaymentAbi } from "../../out/PaymentSettlement.sol/PaymentSettlement.json";
 
 config({ path: "../../configs/.env.dev" });
 

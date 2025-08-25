@@ -18,7 +18,7 @@
 // solhint-disable-next-line one-contract-per-file
 pragma solidity 0.8.24;
 
-import {CirclePaymentsNetwork} from "../../src/CirclePaymentsNetwork.sol";
+import {PaymentSettlement} from "../../src/PaymentSettlement.sol";
 import {IMinimalPermit2} from "../../src/interfaces/IMinimalPermit2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -54,8 +54,8 @@ contract DummyPermit2 is IMinimalPermit2 {
     }
 }
 
-contract CirclePaymentsNetworkGasTest is Test {
-    CirclePaymentsNetwork internal payment;
+contract PaymentSettlementGasTest is Test {
+    PaymentSettlement internal payment;
     DummyPermit2 internal permit2;
     TestERC20 internal usdc;
 
@@ -75,7 +75,7 @@ contract CirclePaymentsNetworkGasTest is Test {
         payee1271 = address(new Mock1271Wallet());
 
         permit2 = new DummyPermit2();
-        payment = new CirclePaymentsNetwork();
+        payment = new PaymentSettlement();
 
         address[] memory attesters = new address[](1);
         attesters[0] = attester;
@@ -111,7 +111,7 @@ contract CirclePaymentsNetworkGasTest is Test {
         uint256 fee = 5 ether;
         bytes32 n = keccak256("gas-cancel");
 
-        CirclePaymentsNetwork.PaymentIntent memory intent = CirclePaymentsNetwork.PaymentIntent({
+        PaymentSettlement.PaymentIntent memory intent = PaymentSettlement.PaymentIntent({
             from: payer,
             to: address(0),
             value: 0,
@@ -124,7 +124,7 @@ contract CirclePaymentsNetworkGasTest is Test {
             attester: attester
         });
 
-        CirclePaymentsNetwork.PayerData memory pd = CirclePaymentsNetwork.PayerData({
+        PaymentSettlement.PayerData memory pd = PaymentSettlement.PayerData({
             permit: IMinimalPermit2.PermitTransferFrom({
                 permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: fee}),
                 nonce: _permitNonce++,
@@ -181,7 +181,7 @@ contract CirclePaymentsNetworkGasTest is Test {
         bytes32 n = keccak256(abi.encodePacked(label, nonceSeed));
 
         // Build PaymentIntent
-        CirclePaymentsNetwork.PaymentIntent memory intent;
+        PaymentSettlement.PaymentIntent memory intent;
         intent.from = payer;
         intent.to = payee;
         intent.value = value;
@@ -194,7 +194,7 @@ contract CirclePaymentsNetworkGasTest is Test {
         intent.attester = attester;
 
         // Build PayerData
-        CirclePaymentsNetwork.PayerData memory pd;
+        PaymentSettlement.PayerData memory pd;
         pd.permit = IMinimalPermit2.PermitTransferFrom({
             permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: value + fee}),
             nonce: 0,

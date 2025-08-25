@@ -30,9 +30,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
-/// @title CirclePaymentsNetwork
+/// @title PaymentSettlement
 /// @notice Circle Payments Network onchain payment contract.
-contract CirclePaymentsNetwork is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
+contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
     using SafeERC20 for IERC20;
 
     /// @notice EIP-1271 magic value returned by valid contract signatures
@@ -43,7 +43,7 @@ contract CirclePaymentsNetwork is Initializable, Ownable2Step, Pausable, Reentra
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
 
     /// @notice EIP-712 domain separator name hash
-    bytes32 private constant _NAME_HASH = keccak256("CirclePaymentsNetwork");
+    bytes32 private constant _NAME_HASH = keccak256("PaymentSettlement");
 
     /// @notice EIP-712 domain separator version hash
     bytes32 private constant _VERSION_HASH = keccak256("1");

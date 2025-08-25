@@ -27,7 +27,7 @@ Ran 5 tests for test/factory/Create2Factory.t.sol:Create2FactoryTest
 [PASS] testRevertsOnDuplicateSalt() (gas: 1040458241)
 Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.98ms (1.78ms CPU time)
 
-Ran 4 tests for test/gas/CirclePaymentsNetworkGas.t.sol:CirclePaymentsNetworkGasTest
+Ran 4 tests for test/gas/PaymentSettlementGas.t.sol:PaymentSettlementGasTest
 [PASS] testBenchmark_cancel_basic() (gas: 145657)
 [PASS] testBenchmark_execute_basic() (gas: 141803)
 [PASS] testBenchmark_execute_withSig1271() (gas: 149721)
@@ -62,7 +62,7 @@ Ran 8 tests for test/utils/Configurable.t.sol:ConfigurableTest
 [PASS] test_updateConfigurator_revertsZeroAddr() (gas: 34709)
 Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 6.95ms (3.02ms CPU time)
 
-Ran 27 tests for test/CirclePaymentsNetwork.t.sol:CirclePaymentsNetworkTest
+Ran 27 tests for test/PaymentSettlement.t.sol:PaymentSettlementTest
 [PASS] testAddRemoveAttester() (gas: 214683)
 [PASS] testCancel_feeAndBeneficiaryMatrix() (gas: 361979)
 [PASS] testCancel_revertFeeExceedsMax() (gas: 78491)
@@ -93,7 +93,7 @@ Ran 27 tests for test/CirclePaymentsNetwork.t.sol:CirclePaymentsNetworkTest
 Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 7.01ms (2.64ms CPU time)
 
 ╭--------------------------------------------------------------+-----------------+--------+--------+--------+---------╮
-| src/CirclePaymentsNetwork.sol:CirclePaymentsNetwork Contract |                 |        |        |        |         |
+| src/PaymentSettlement.sol:PaymentSettlement Contract |                 |        |        |        |         |
 +=====================================================================================================================+
 | Deployment Cost                                              | Deployment Size |        |        |        |         |
 |--------------------------------------------------------------+-----------------+--------+--------+--------+---------|
@@ -147,7 +147,7 @@ Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 7.01ms (2.64ms CPU
 ╰--------------------------------------------------------+-----------------+-----------+--------+------------+---------╯
 
 ╭----------------------------------------------------------+-----------------+-----+--------+-----+---------╮
-| test/CirclePaymentsNetwork.t.sol:Mock1271Wallet Contract |                 |     |        |     |         |
+| test/PaymentSettlement.t.sol:Mock1271Wallet Contract |                 |     |        |     |         |
 +===========================================================================================================+
 | Deployment Cost                                          | Deployment Size |     |        |     |         |
 |----------------------------------------------------------+-----------------+-----+--------+-----+---------|
@@ -161,7 +161,7 @@ Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 7.01ms (2.64ms CPU
 ╰----------------------------------------------------------+-----------------+-----+--------+-----+---------╯
 
 ╭-----------------------------------------------------+-----------------+-------+--------+-------+---------╮
-| test/CirclePaymentsNetwork.t.sol:TestERC20 Contract |                 |       |        |       |         |
+| test/PaymentSettlement.t.sol:TestERC20 Contract |                 |       |        |       |         |
 +==========================================================================================================+
 | Deployment Cost                                     | Deployment Size |       |        |       |         |
 |-----------------------------------------------------+-----------------+-------+--------+-------+---------|
@@ -193,7 +193,7 @@ Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 7.01ms (2.64ms CPU
 ╰-------------------------------------------------------+-----------------+------+--------+------+---------╯
 
 ╭-----------------------------------------------------------------+-----------------+-----+--------+-----+---------╮
-| test/gas/CirclePaymentsNetworkGas.t.sol:Mock1271Wallet Contract |                 |     |        |     |         |
+| test/gas/PaymentSettlementGas.t.sol:Mock1271Wallet Contract |                 |     |        |     |         |
 +==================================================================================================================+
 | Deployment Cost                                                 | Deployment Size |     |        |     |         |
 |-----------------------------------------------------------------+-----------------+-----+--------+-----+---------|
@@ -207,7 +207,7 @@ Suite result: ok. 27 passed; 0 failed; 0 skipped; finished in 7.01ms (2.64ms CPU
 ╰-----------------------------------------------------------------+-----------------+-----+--------+-----+---------╯
 
 ╭------------------------------------------------------------+-----------------+-------+--------+-------+---------╮
-| test/gas/CirclePaymentsNetworkGas.t.sol:TestERC20 Contract |                 |       |        |       |         |
+| test/gas/PaymentSettlementGas.t.sol:TestERC20 Contract |                 |       |        |       |         |
 +=================================================================================================================+
 | Deployment Cost                                            | Deployment Size |       |        |       |         |
 |------------------------------------------------------------+-----------------+-------+--------+-------+---------|
