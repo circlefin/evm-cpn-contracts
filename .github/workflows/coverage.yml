@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   run_coverage:
-    runs-on: ubuntu-latest
+    runs-on: small-spot
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
