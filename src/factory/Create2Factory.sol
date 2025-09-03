@@ -31,7 +31,7 @@ contract Create2Factory is Ownable2Step {
     /// @notice Emitted when a contract is deployed
     event FactoryDeployed(address indexed deployed, bytes32 indexed salt);
 
-    /// @notice Initializes ownership to the deployer
+    /// @notice Initializes ownership to `initialOwner`
     constructor(address initialOwner) Ownable(initialOwner) {}
 
     /// @notice Deploy a contract using CREATE2
