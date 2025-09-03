@@ -22,6 +22,7 @@ import {IMinimalPermit2} from "../src/interfaces/IMinimalPermit2.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Test} from "forge-std/src/Test.sol";
+import {Vm} from "forge-std/src/Vm.sol";
 
 /* ─────────────────────────────────────────────────────────────────────────────
                                     Mock
@@ -828,5 +829,65 @@ contract PaymentSettlementTest is Test {
         vm.prank(attester);
         vm.expectRevert(PaymentSettlement.InvalidAmount.selector);
         payment.cancel(intent, pd, fee);
+    }
+    /* --------------------------------------------------------------------- */
+    /*                 Spurious event emission guards                        */
+    /* --------------------------------------------------------------------- */
+
+    function _countEvent(Vm.Log[] memory logs, bytes32 sig, address who) internal pure returns (uint256 c) {
+        bytes32 whoTopic = bytes32(uint256(uint160(who)));
+        for (uint256 i = 0; i < logs.length; i++) {
+            Vm.Log memory ll = logs[i];
+            if (ll.topics.length >= 2 && ll.topics[0] == sig && ll.topics[1] == whoTopic) {
+                unchecked {
+                    c++;
+                }
+            }
+        }
+    }
+
+    function testInitialize_dedupAttesters_emitsOnce() public {
+        // fresh instance to exercise initialize()
+        PaymentSettlement fresh = new PaymentSettlement();
+
+        // prepare duplicates: [attester, attester, attester]
+        address[] memory inits = new address[](3);
+        inits[0] = attester;
+        inits[1] = attester;
+        inits[2] = attester;
+
+        vm.recordLogs();
+        fresh.initialize(IMinimalPermit2(address(permit2)), address(this), rescuer, pauser, config, inits);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 added = keccak256("AttesterAdded(address)");
+        uint256 addedCount = _countEvent(logs, added, attester);
+        assertEq(addedCount, 1, "initialize() must emit AttesterAdded once per unique attester");
+
+        // sanity: attester is active
+        assertTrue(fresh.isAttester(attester));
+    }
+
+    function testAttesterAddRemove_spuriousEventsGuarded() public {
+        address x = address(0xA11CE);
+        bytes32 added = keccak256("AttesterAdded(address)");
+        bytes32 removed = keccak256("AttesterRemoved(address)");
+
+        vm.startPrank(config);
+        vm.recordLogs();
+        payment.addAttester(x); // should emit once
+        payment.addAttester(x); // no-op, no emit
+        payment.removeAttester(x); // should emit once
+        payment.removeAttester(x); // no-op, no emit
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        vm.stopPrank();
+
+        uint256 addCount = _countEvent(logs, added, x);
+        uint256 removeCount = _countEvent(logs, removed, x);
+
+        assertEq(addCount, 1, "addAttester must emit at most once per address");
+        assertEq(removeCount, 1, "removeAttester must emit at most once per address");
+
+        assertFalse(payment.isAttester(x));
     }
 }

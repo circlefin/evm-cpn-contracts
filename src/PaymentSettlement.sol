@@ -193,8 +193,11 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
 
         uint256 len = attesters_.length;
         for (uint256 i; i < len;) {
-            _attesters[attesters_[i]] = true;
-            emit AttesterAdded(attesters_[i]);
+            address a = attesters_[i];
+            if (!_attesters[a]) {
+                _attesters[a] = true;
+                emit AttesterAdded(a);
+            }
             unchecked {
                 ++i;
             }
@@ -216,15 +219,19 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
     /// @notice Adds a new attester address
     /// @param attester_ Address to be granted attester role
     function addAttester(address attester_) external onlyConfigurator {
-        _attesters[attester_] = true;
-        emit AttesterAdded(attester_);
+        if (!_attesters[attester_]) {
+            _attesters[attester_] = true;
+            emit AttesterAdded(attester_);
+        }
     }
 
     /// @notice Removes an attester address
     /// @param attester_ Address to be revoked from attester role
     function removeAttester(address attester_) external onlyConfigurator {
-        delete _attesters[attester_];
-        emit AttesterRemoved(attester_);
+        if (_attesters[attester_]) {
+            delete _attesters[attester_];
+            emit AttesterRemoved(attester_);
+        }
     }
 
     /// @notice Checks whether an address is a valid attester
