@@ -329,6 +329,7 @@ contract PaymentSettlementTest is Test {
             abi.encode(
                 typeHash,
                 address(usdc), // token
+                payer,
                 payee,
                 value,
                 intent.validAfter,
