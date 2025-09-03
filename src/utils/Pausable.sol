@@ -18,12 +18,13 @@
 pragma solidity 0.8.24;
 
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 /// @title Pausable
 /// @notice Adds pausing functionality with a dedicated pauser role
 /// @dev Intended to be inherited by contracts requiring pause functionality
-abstract contract Pausable is Context, Ownable2Step {
+abstract contract Pausable is Context, Ownable2Step, Initializable {
     /// @dev Internal state tracking whether the contract is paused
     bool private _paused;
 
@@ -81,9 +82,12 @@ abstract contract Pausable is Context, Ownable2Step {
 
     /// @dev Initializes the pauser role at deployment
     /// @param initialPauser The initial address assigned as pauser
-    function _initializePauser(address initialPauser) internal {
+    function _initializePauser(address initialPauser) internal onlyInitializing {
         _paused = false;
-        _setPauser(initialPauser);
+        if (initialPauser != address(0)) {
+            _pauser = initialPauser;
+            emit PauserTransferred(address(0), initialPauser);
+        }
     }
 
     /// @notice Returns whether the contract is currently paused

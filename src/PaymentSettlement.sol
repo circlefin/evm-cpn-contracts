@@ -32,7 +32,7 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
 
 /// @title PaymentSettlement
 /// @notice Circle Payments Network onchain payment contract.
-contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
+contract PaymentSettlement is Ownable2Step, Initializable, Pausable, ReentrancyGuard, Rescuable, Configurable {
     using SafeERC20 for IERC20;
 
     /// @notice EIP-712 domain separator parameters

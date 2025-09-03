@@ -17,12 +17,13 @@
 pragma solidity 0.8.24;
 
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 /// @title Configurable
 /// @notice Provides a configurator role for privileged parameter updates
 /// @dev Intended to be inherited by contracts requiring off-owner configuration access
-abstract contract Configurable is Context, Ownable2Step {
+abstract contract Configurable is Context, Ownable2Step, Initializable {
     /// @dev Address assigned with the configurator role
     address private _configurator;
 
@@ -47,8 +48,11 @@ abstract contract Configurable is Context, Ownable2Step {
 
     /// @dev Initializes the configurator role
     /// @param initialConfigurator Address to assign as initial configurator
-    function _initializeConfigurator(address initialConfigurator) internal {
-        _setConfigurator(initialConfigurator);
+    function _initializeConfigurator(address initialConfigurator) internal onlyInitializing {
+        if (initialConfigurator != address(0)) {
+            _configurator = initialConfigurator;
+            emit ConfiguratorTransferred(address(0), initialConfigurator);
+        }
     }
 
     /// @notice Returns the current configurator address

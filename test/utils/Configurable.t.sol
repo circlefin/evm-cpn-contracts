@@ -19,13 +19,16 @@ pragma solidity 0.8.24;
 
 import {Configurable} from "../../src/utils/Configurable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Test} from "forge-std/src/Test.sol";
 
 /* -------------------------------------------------------------------------- */
 /*                         ── Harness (concrete impl) ──                      */
 /* -------------------------------------------------------------------------- */
-contract ConfigurableMock is Configurable {
-    constructor(address initialOwner, address initialConfigurator) Ownable(initialOwner) {
+contract ConfigurableMock is Initializable, Configurable {
+    constructor(address initialOwner) Ownable(initialOwner) {}
+
+    function init(address initialConfigurator) external initializer {
         _initializeConfigurator(initialConfigurator);
     }
 
@@ -47,7 +50,8 @@ contract ConfigurableTest is Test {
 
     /* ---------------- set-up ---------------- */
     function setUp() public {
-        mock = new ConfigurableMock(owner, configurator);
+        mock = new ConfigurableMock(owner);
+        mock.init(configurator);
     }
 
     /* ---------------- onlyConfigurator path (success) ---------------- */

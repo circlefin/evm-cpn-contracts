@@ -19,10 +19,11 @@ pragma solidity 0.8.24;
 
 import {Pausable} from "../../src/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Test} from "forge-std/src/Test.sol";
 
 /* ───────────────────────────── Harness ───────────────────────────── */
-contract PausableHarness is Pausable {
+contract PausableHarness is Initializable, Pausable {
     /* helper funcs exercising modifiers */
     function onlyWhenNotPaused() external view whenNotPaused returns (uint8) {
         return 1;
@@ -42,7 +43,9 @@ contract PausableHarness is Pausable {
     }
 
     /* constructor wiring owner + pauser */
-    constructor(address initOwner, address initPauser) Ownable(initOwner) {
+    constructor(address initOwner) Ownable(initOwner) {}
+
+    function init(address initPauser) external initializer {
         _initializePauser(initPauser);
     }
 }
@@ -56,7 +59,8 @@ contract PausableTest is Test {
     address private evil = address(0xEE);
 
     function setUp() public {
-        mock = new PausableHarness(owner, pauser);
+        mock = new PausableHarness(owner);
+        mock.init(pauser);
     }
 
     /* ---------- initial state ---------- */

@@ -20,6 +20,7 @@ pragma solidity 0.8.24;
 import {Rescuable} from "../../src/utils/Rescuable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -42,10 +43,12 @@ contract RevertingReceiver {
 }
 
 /* ─────────────────────────────  Harness  ─────────────────────────────── */
-contract RescuableHarness is Rescuable {
+contract RescuableHarness is Initializable, Rescuable {
     using SafeERC20 for IERC20;
 
-    constructor(address owner_, address rescuer_) Ownable(owner_) {
+    constructor(address owner_) Ownable(owner_) {}
+
+    function init(address rescuer_) external initializer {
         _initializeRescuer(rescuer_);
     }
 
@@ -69,7 +72,8 @@ contract RescuableTest is Test {
     address private to = address(0xDD);
 
     function setUp() public {
-        h = new RescuableHarness(owner, rescuer);
+        h = new RescuableHarness(owner);
+        h.init(rescuer);
         tkn = new MockERC20();
     }
 
