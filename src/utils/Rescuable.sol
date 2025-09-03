@@ -18,6 +18,7 @@
 pragma solidity 0.8.24;
 
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
@@ -25,7 +26,7 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 /// @title Rescuable
 /// @notice Enables recovery of ERC20 or native tokens by an authorized rescuer
 /// @dev Designed for use in contracts that may receive stuck funds
-abstract contract Rescuable is Context, Ownable2Step {
+abstract contract Rescuable is Context, Ownable2Step, Initializable {
     using SafeERC20 for IERC20;
 
     /// @dev Address assigned as the current rescuer
@@ -78,8 +79,11 @@ abstract contract Rescuable is Context, Ownable2Step {
 
     /// @dev Initializes the rescuer role
     /// @param initialRescuer Address to set as initial rescuer
-    function _initializeRescuer(address initialRescuer) internal {
-        _setRescuer(initialRescuer);
+    function _initializeRescuer(address initialRescuer) internal onlyInitializing {
+        if (initialRescuer != address(0)) {
+            _rescuer = initialRescuer;
+            emit RescuerTransferred(address(0), initialRescuer);
+        }
     }
 
     /// @notice Returns the current rescuer address
