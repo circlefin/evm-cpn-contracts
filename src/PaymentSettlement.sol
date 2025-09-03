@@ -35,9 +35,6 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
 contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyGuard, Rescuable, Configurable {
     using SafeERC20 for IERC20;
 
-    /// @notice EIP-1271 magic value returned by valid contract signatures
-    bytes4 private constant EIP1271_MAGICVALUE = 0x1626ba7e;
-
     /// @notice EIP-712 domain separator parameters
     bytes32 private constant _EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
