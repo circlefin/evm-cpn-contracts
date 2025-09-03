@@ -265,7 +265,8 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
             intent.beneficiary,
             fee
         );
-        _validateTimeWindow(intent.validAfter, intent.validBefore);
+        if (block.timestamp < intent.validAfter) revert NotYetValid();
+        if (block.timestamp > intent.validBefore) revert ExpiredIntent();
         if (intent.to == address(0)) revert InvalidPayee();
 
         // Fee must not exceed maxFee in the signed intent
@@ -356,14 +357,6 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
     function _validateAndMarkNonce(PaymentIntent calldata intent) internal {
         if (isNonceUsed(intent.nonce)) revert AlreadyUsed(intent.nonce);
         _nonceUsed[intent.nonce] = true;
-    }
-
-    /// @dev Validates that the current time is within the valid time window
-    /// @param after_ Timestamp after which the intent becomes valid
-    /// @param before_ Timestamp after which the intent expires
-    function _validateTimeWindow(uint256 after_, uint256 before_) internal view {
-        if (block.timestamp < after_) revert NotYetValid();
-        if (block.timestamp > before_) revert ExpiredIntent();
     }
 
     /// @notice Returns the EIP-712 domain separator
