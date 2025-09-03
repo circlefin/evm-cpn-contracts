@@ -180,7 +180,7 @@ contract PaymentSettlement is Ownable2Step, Initializable, Pausable, ReentrancyG
         address pauser_,
         address configurator_,
         address[] calldata attesters_
-    ) external initializer {
+    ) external onlyOwner initializer {
         if (address(permit2_) == address(0)) revert InvalidPermit2();
         if (owner_ == address(0)) revert InvalidOwner(owner_);
 
