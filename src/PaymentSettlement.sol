@@ -431,10 +431,8 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
     /// @param owner Token owner who authorized the permit
     /// @param to Recipient address (contract or beneficiary)
     /// @param params Bundled pull parameters (hash, type, amount)
-    /// @return received The amount actually received
     function _pullViaPermit2(PayerData calldata payerData, address owner, address to, PullParams memory params)
         private
-        returns (uint256 received)
     {
         IERC20 tkn = IERC20(payerData.permit.permitted.token);
         uint256 beforeBal = tkn.balanceOf(to);
@@ -446,7 +444,7 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
             payerData.permit, details, owner, params.witnessHash, params.witnessType, payerData.signature
         );
 
-        received = tkn.balanceOf(to) - beforeBal;
+        uint256 received = tkn.balanceOf(to) - beforeBal;
         if (received != params.amount) revert InvalidAmount();
     }
 }
