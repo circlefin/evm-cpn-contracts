@@ -134,9 +134,9 @@ abstract contract Rescuable is Context, Ownable2Step {
     /// @dev Internal function to update rescuer and emit event
     /// @param newRescuer Address to assign as rescuer
     function _setRescuer(address newRescuer) private {
-        if (newRescuer == _rescuer) revert SameRescuer(newRescuer);
-        address old = _rescuer;
+        address current = _rescuer;
+        if (newRescuer == current) revert SameRescuer(newRescuer);
         _rescuer = newRescuer;
-        emit RescuerTransferred(old, newRescuer);
+        emit RescuerTransferred(current, newRescuer);
     }
 }
