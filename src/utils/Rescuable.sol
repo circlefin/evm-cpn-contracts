@@ -54,9 +54,6 @@ abstract contract Rescuable is Context, Ownable2Step {
     /// @notice Reverts when attempting to rescue zero amount
     error InvalidRescueAmount();
 
-    /// @notice Reverts if contract balance is insufficient for rescue
-    error RescueAmountExceedsBalance();
-
     /// @notice Reverts if native token transfer fails
     error NativeTransferFailed();
 
