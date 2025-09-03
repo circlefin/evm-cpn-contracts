@@ -86,7 +86,7 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
         address attester;
     }
 
-    /// @dev Data structure containing Permit2 witness and signature
+    /// @dev Data structure containing Permit2 permit and the payer's signature
     struct PayerData {
         IMinimalPermit2.PermitTransferFrom permit;
         bytes signature;
@@ -168,8 +168,8 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
     /// @notice Emitted when a fee exceeds the maximum fee
     error FeeExceedsMax(uint256 fee, uint256 maxFee);
 
-    /// @notice Initializes the contract with configuration and attester list
-    /// @dev Callable only once. Must be called immediately after deployment via proxy.
+    /// @notice Initializes Permit2, owner, roles (rescuer, pauser, configurator), and the attester set
+    /// @dev Callable only once. Must be called immediately after deployment.
     /// @param permit2_ Address of Uniswap Permit2 contract
     /// @param owner_ Initial contract owner
     /// @param rescuer_ Initial rescuer role address
@@ -206,7 +206,7 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
 
     // slither-disable-next-line dead-code, solhint-disable-next-line no-empty-blocks
     /// @notice Initializes ownership to the deployer
-    /// @dev This contract is not upgradeable; constructor sets the initial owner
+    /// @dev Call `initialize` once after deployment to set roles and the attester set
     constructor() Ownable(_msgSender()) {}
 
     /// @notice Modifier to check if the caller is an attester
