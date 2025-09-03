@@ -89,7 +89,7 @@ contract Create2Factory is Ownable2Step {
         }
 
         // move this check out of assembly
-        if (deployed.code.length == 0) revert DeploymentFailed();
+        if (deployed == address(0) || deployed.code.length == 0) revert DeploymentFailed();
 
         emit FactoryDeployed(deployed, salt);
     }
