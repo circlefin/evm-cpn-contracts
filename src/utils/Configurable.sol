@@ -74,10 +74,9 @@ abstract contract Configurable is Context, Ownable2Step {
     /// @dev Internal function to update configurator role and emit event
     /// @param newConfigurator Address to assign as new configurator
     function _setConfigurator(address newConfigurator) internal {
-        if (newConfigurator == _configurator) revert SameConfigurator(newConfigurator);
-
-        address old = _configurator;
+        address current = _configurator;
+        if (newConfigurator == current) revert SameConfigurator(newConfigurator);
         _configurator = newConfigurator;
-        emit ConfiguratorTransferred(old, newConfigurator);
+        emit ConfiguratorTransferred(current, newConfigurator);
     }
 }
