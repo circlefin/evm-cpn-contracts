@@ -226,6 +226,7 @@ contract PaymentSettlementGasTest is Test {
             abi.encode(
                 payment.PAYEE_PAYMENT_INTENT_TYPEHASH(),
                 address(usdc),
+                payer,
                 payee,
                 value,
                 0,

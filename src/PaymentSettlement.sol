@@ -384,6 +384,7 @@ contract PaymentSettlement is Initializable, Ownable2Step, Pausable, ReentrancyG
             abi.encode(
                 PAYEE_PAYMENT_INTENT_TYPEHASH,
                 token,
+                intent.from,
                 intent.to,
                 intent.value,
                 intent.validAfter,
