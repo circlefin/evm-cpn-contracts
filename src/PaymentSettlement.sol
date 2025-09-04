@@ -192,14 +192,11 @@ contract PaymentSettlement is Ownable2Step, Initializable, Pausable, ReentrancyG
         _initializeRescuer(rescuer_);
 
         uint256 len = attesters_.length;
-        for (uint256 i; i < len;) {
+        for (uint256 i; i < len; i++) {
             address a = attesters_[i];
             if (!_attesters[a]) {
                 _attesters[a] = true;
                 emit AttesterAdded(a);
-            }
-            unchecked {
-                ++i;
             }
         }
     }
