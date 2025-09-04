@@ -63,7 +63,7 @@ contract Create2Factory is Ownable2Step {
     {
         deployed = _deploy(salt, bytecode);
         uint256 len = calls.length;
-        for (uint256 i = 0; i < len;) {
+        for (uint256 i = 0; i < len; i++) {
             // slither-disable-next-line low-level-calls, solhint-disable-next-line avoid-low-level-calls
             (bool ok, bytes memory ret) = deployed.call(calls[i]);
             if (!ok) {
@@ -72,9 +72,6 @@ contract Create2Factory is Ownable2Step {
                 assembly {
                     revert(add(ret, 0x20), mload(ret))
                 }
-            }
-            unchecked {
-                ++i;
             }
         }
     }

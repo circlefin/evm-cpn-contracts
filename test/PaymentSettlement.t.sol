@@ -839,9 +839,7 @@ contract PaymentSettlementTest is Test {
         for (uint256 i = 0; i < logs.length; i++) {
             Vm.Log memory ll = logs[i];
             if (ll.topics.length >= 2 && ll.topics[0] == sig && ll.topics[1] == whoTopic) {
-                unchecked {
-                    c++;
-                }
+                c++;
             }
         }
     }
