@@ -22,7 +22,7 @@
   "keywords": [],
   "repository": "git@github.com:circlefin/cpn-onchain-contracts.git",
   "dependencies": {
-    "@openzeppelin/contracts": "^5.2.0"
+    "@openzeppelin/contracts": "5.4.0"
   },
   "devDependencies": {
     "solhint": "^5.1.0",
