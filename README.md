@@ -1,4 +1,4 @@
-# cpn-onchain-contracts
+# evm-cpn-contracts
 
 The repository for the smart contracts used by Circle Payment Platform.
 
