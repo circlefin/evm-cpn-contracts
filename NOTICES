@@ -1,0 +1,14 @@
+Third-Party Notices
+
+This repository includes or is inspired by the following works. Each is provided under its own license as noted.
+
+- OpenZeppelin Contracts — MIT
+  Source: https://github.com/OpenZeppelin/openzeppelin-contracts
+
+- Uniswap Permit2 (interfaces/witness types referenced) — MIT
+  Source: https://github.com/Uniswap/permit2
+
+- Foundry / forge-std (testing utilities) — MIT OR Apache-2.0
+  Source: https://github.com/foundry-rs/forge-std
+
+Additional third-party attributions may appear in dependency manifests or the project SBOM. If you distribute a build that statically bundles further third-party components, include their licenses with your distribution.
