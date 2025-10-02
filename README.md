@@ -35,14 +35,6 @@ yarn test
 ### Test Coverage
 Run `yarn coverage` to generate a coverage report.
 
-### Gas tests
-
-Gas benchmarks live under `test/gas/` (e.g., `PaymentSettlementGas.t.sol`).
-
-```bash
-yarn benchmark:write
-```
-
 ### Lint
 Run `yarn lint` to lint all `.sol` files in the `src` and `test` directories. Run `yarn format:check` and `yarn format:write` to check for, and fix formatting issues, respectively.
 
@@ -111,8 +103,7 @@ forge script script/deploy/DeployPaymentSettlement.s.sol \
 ```
 src/                    # Solidity contracts (Create2Factory, PaymentSettlement, utils)
 script/deploy/          # Forge deployment scripts
-test/                   # Unit & gas tests
-gas/script/             # Helper TS/JS for gas estimation
+test/                   # Unit tests
 ```
 
 ---
