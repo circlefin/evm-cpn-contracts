@@ -5,7 +5,7 @@ on:
     branches: [main]
 jobs:
   lint_and_test:
-    runs-on: small-dind-spot
+    runs-on: github-hosted-small
 
     steps:
       - name: Check out repository code
