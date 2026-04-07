@@ -310,9 +310,6 @@ contract PaymentSettlementV2 is
     /// @notice Thrown when the provided payment record fields do not match the stored hash
     error InvalidPaymentRecord();
 
-    /// @notice Thrown when refund source validation fails
-    error InvalidSource();
-
     /// @notice Thrown when a refund destination address is zero
     error InvalidRefundDestination(address destination);
 
@@ -879,8 +876,6 @@ contract PaymentSettlementV2 is
         if (payeeAmount + beneficiaryAmount != intent.payerRefundAmount + intent.incentiveProviderRefundAmount) {
             revert RefundAmountMismatch();
         }
-        if (intent.beneficiaryRefundFrom == address(0) && beneficiaryAmount > 0) revert InvalidSource();
-
         if (payeeAmount > 0) {
             if (payeeRefundData.permit.permitted.token != intent.token) revert InvalidToken();
             _pullViaPermit2(
@@ -911,7 +906,7 @@ contract PaymentSettlementV2 is
             if (intent.payerRefundTo == address(0)) revert InvalidRefundDestination(intent.payerRefundTo);
             tokenContract.safeTransfer(intent.payerRefundTo, intent.payerRefundAmount);
         }
-        if (intent.incentiveProvider != address(0) && intent.incentiveProviderRefundAmount > 0) {
+        if (intent.incentiveProviderRefundAmount > 0) {
             if (intent.incentiveProviderRefundTo == address(0)) {
                 revert InvalidRefundDestination(intent.incentiveProviderRefundTo);
             }
