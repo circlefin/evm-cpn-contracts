@@ -176,7 +176,9 @@ contract PaymentSettlementV2 is
 
     /// @dev Stores payment record hash for refund verification (only written by execute)
     mapping(bytes32 => bytes32) private _paymentRecordHashes;
+    /// @dev Tracks cumulative payer-side refunded amount per nonce
     mapping(bytes32 => uint256) private _cumulativePayerRefunded;
+    /// @dev Tracks cumulative incentive-provider-side refunded amount per nonce
     mapping(bytes32 => uint256) private _cumulativeIncentiveRefunded;
 
     /// @dev Mapping of authorized attesters
@@ -482,7 +484,7 @@ contract PaymentSettlementV2 is
 
     /// @notice Cancels a payment intent before it is executed.
     /// @dev Marks the intent nonce as cancelled and pulls the fee from the payer via Permit2.
-    /// @param intent PaymentIntent (only used fields: from, nonce, beneficiary, maxFee).
+    /// @param intent PaymentIntent (only used fields: from, nonce, beneficiary, maxFee, attester).
     /// @param data Permit2 permit and signature authorizing the fee transfer.
     /// @param fee The fee for cancellation.
     function cancel(PaymentIntent calldata intent, Permit2Data calldata data, uint256 fee)
