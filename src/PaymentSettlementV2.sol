@@ -66,7 +66,7 @@ contract PaymentSettlementV2 is
 
     /// @notice EIP-712 typehash for payer cancel intent
     bytes32 public constant PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH =
-        keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee)");
+        keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee,address attester)");
 
     /// @notice EIP-712 typehash for incentive consent witness (payment-scoped authorization)
     bytes32 public constant INCENTIVE_CONSENT_TYPEHASH = keccak256(
@@ -75,22 +75,22 @@ contract PaymentSettlementV2 is
 
     /// @notice EIP-712 typehash for payer-signed refund intent
     bytes32 public constant PAYER_REFUND_TYPEHASH = keccak256(
-        "PayerRefundIntent(address token,uint256 payerRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address payerRefundTo,address attester)"
+        "PayerRefundIntent(address token,uint256 payerRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address payerRefundTo,uint256 cumulativePayerRefunded,uint256 cumulativeIncentiveRefunded,address attester)"
     );
 
     /// @notice EIP-712 typehash for incentive provider-signed refund intent
     bytes32 public constant INCENTIVE_PROVIDER_REFUND_TYPEHASH = keccak256(
-        "IncentiveProviderRefundIntent(address token,uint256 incentiveProviderRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address incentiveProviderRefundTo,address attester)"
+        "IncentiveProviderRefundIntent(address token,uint256 incentiveProviderRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address incentiveProviderRefundTo,uint256 cumulativePayerRefunded,uint256 cumulativeIncentiveRefunded,address attester)"
     );
 
     /// @notice EIP-712 typehash for payee refund source witness
     bytes32 public constant PAYEE_REFUND_SOURCE_TYPEHASH = keccak256(
-        "PayeeRefundSourceIntent(address payeeRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,address attester)"
+        "PayeeRefundSourceIntent(address payeeRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,bool requireDestinationRefundSig,address attester)"
     );
 
     /// @notice EIP-712 typehash for beneficiary refund source witness
     bytes32 public constant BENEFICIARY_REFUND_SOURCE_TYPEHASH = keccak256(
-        "BeneficiaryRefundSourceIntent(address beneficiaryRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,address attester)"
+        "BeneficiaryRefundSourceIntent(address beneficiaryRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,bool requireDestinationRefundSig,address attester)"
     );
 
     /// @notice EIP-712 witness type string for payment intent
@@ -102,7 +102,7 @@ contract PaymentSettlementV2 is
 
     /// @notice EIP-712 witness type string for cancel intent
     string public constant _WITNESS_CANCEL_TYPE_STR = "PaymentIntent witness)"
-        "PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee)"
+        "PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee,address attester)"
         "TokenPermissions(address token,uint256 amount)";
 
     /// @notice EIP-712 witness type string for incentive consent
@@ -112,12 +112,12 @@ contract PaymentSettlementV2 is
 
     /// @notice EIP-712 witness type string for payee refund source
     string public constant _WITNESS_PAYEE_REFUND_SOURCE_TYPE_STR = "PayeeRefundSourceIntent witness)"
-        "PayeeRefundSourceIntent(address payeeRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,address attester)"
+        "PayeeRefundSourceIntent(address payeeRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,bool requireDestinationRefundSig,address attester)"
         "TokenPermissions(address token,uint256 amount)";
 
     /// @notice EIP-712 witness type string for beneficiary refund source
     string public constant _WITNESS_BENEFICIARY_REFUND_SOURCE_TYPE_STR = "BeneficiaryRefundSourceIntent witness)"
-        "BeneficiaryRefundSourceIntent(address beneficiaryRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,address attester)"
+        "BeneficiaryRefundSourceIntent(address beneficiaryRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,bool requireDestinationRefundSig,address attester)"
         "TokenPermissions(address token,uint256 amount)";
 
     /// @dev EIP-712 structured data representing an offchain-signed payment intent
@@ -185,8 +185,8 @@ contract PaymentSettlementV2 is
     /// @dev Uniswap Permit2 contract
     IMinimalPermit2 public permit2;
 
-    /// @dev Cached EIP-712 domain separator, set once during initialize()
-    bytes32 private _cachedDomainSeparator;
+    /// @dev Cached EIP-712 domain separator, set once in constructor
+    bytes32 private immutable _CACHED_DOMAIN_SEPARATOR;
 
     /// @notice Emitted when a new attester is added
     event AttesterAdded(address indexed attester);
@@ -313,8 +313,8 @@ contract PaymentSettlementV2 is
     /// @notice Thrown when refund source validation fails
     error InvalidSource();
 
-    /// @notice Thrown when total refund amount is zero
-    error ZeroRefundAmount();
+    /// @notice Thrown when a refund destination address is zero
+    error InvalidRefundDestination(address destination);
 
     /// @notice Initializes Permit2, owner, roles (rescuer, pauser, configurator), and the attester set
     /// @dev Callable only once. Must be called immediately after deployment.
@@ -342,9 +342,6 @@ contract PaymentSettlementV2 is
         _initializeConfigurator(configurator_);
         _initializeRescuer(rescuer_);
 
-        _cachedDomainSeparator =
-            keccak256(abi.encode(_EIP712_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this)));
-
         uint256 len = attesters_.length;
         for (uint256 i; i < len; i++) {
             address a = attesters_[i];
@@ -355,8 +352,10 @@ contract PaymentSettlementV2 is
         }
     }
 
-    // slither-disable-next-line dead-code, solhint-disable-next-line no-empty-blocks
-    constructor() Ownable(_msgSender()) {}
+    constructor() Ownable(_msgSender()) {
+        _CACHED_DOMAIN_SEPARATOR =
+            keccak256(abi.encode(_EIP712_DOMAIN_TYPEHASH, _NAME_HASH, _VERSION_HASH, block.chainid, address(this)));
+    }
 
     /// @notice Modifier to check if the caller is an attester
     /// @dev Reverts if the caller is not an attester
@@ -564,7 +563,7 @@ contract PaymentSettlementV2 is
 
     /// @notice Returns the payment record hash associated with a nonce.
     /// @param nonce The nonce to look up
-    /// @return The keccak256 hash of (from, incentiveProvider, token, payerAmount, payeeSettlementAmount, fee)
+    /// @return The keccak256 hash of (token, payer, incentiveProvider, payerAmount, payeeSettlementAmount, fee)
     function getPaymentRecordHash(bytes32 nonce) external view returns (bytes32) {
         return _paymentRecordHashes[nonce];
     }
@@ -591,7 +590,7 @@ contract PaymentSettlementV2 is
     /// @notice Returns the EIP-712 domain separator
     /// @return bytes32 The domain separator hash
     function domainSeparator() public view returns (bytes32) {
-        return _cachedDomainSeparator;
+        return _CACHED_DOMAIN_SEPARATOR;
     }
 
     /// @notice Returns cumulative refunded amounts for a payment nonce
@@ -679,7 +678,12 @@ contract PaymentSettlementV2 is
     function _hashPayerCancelPaymentIntent(PaymentIntent calldata intent) internal pure returns (bytes32) {
         return keccak256(
             abi.encode(
-                PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH, intent.from, intent.nonce, intent.beneficiary, intent.maxFee
+                PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH,
+                intent.from,
+                intent.nonce,
+                intent.beneficiary,
+                intent.maxFee,
+                intent.attester
             )
         );
     }
@@ -699,6 +703,7 @@ contract PaymentSettlementV2 is
                 intent.incentiveProviderRefundAmount,
                 intent.payerRefundTo,
                 intent.incentiveProviderRefundTo,
+                intent.requireDestinationRefundSig,
                 intent.attester
             )
         );
@@ -719,6 +724,7 @@ contract PaymentSettlementV2 is
                 intent.incentiveProviderRefundAmount,
                 intent.payerRefundTo,
                 intent.incentiveProviderRefundTo,
+                intent.requireDestinationRefundSig,
                 intent.attester
             )
         );
@@ -753,6 +759,8 @@ contract PaymentSettlementV2 is
     /// @param intent Refund intent struct
     /// @param refundAmount Refund amount bound to this signer
     /// @param refundTo Destination address for this signer's refund
+    /// @param cumulativePayerRefunded Current on-chain cumulative payer refunded for this nonce
+    /// @param cumulativeIncentiveRefunded Current on-chain cumulative incentive refunded for this nonce
     /// @param sig Signature bytes
     function _requireValidRefundSig(
         address signer,
@@ -760,18 +768,16 @@ contract PaymentSettlementV2 is
         RefundIntent calldata intent,
         uint256 refundAmount,
         address refundTo,
+        uint256 cumulativePayerRefunded,
+        uint256 cumulativeIncentiveRefunded,
         bytes calldata sig
     ) internal view {
         bytes32 structHash = keccak256(
-            abi.encode(
-                typehash,
-                intent.token,
-                refundAmount,
-                intent.validAfter,
-                intent.validBefore,
-                intent.nonce,
-                refundTo,
-                intent.attester
+            abi.encodePacked(
+                abi.encode(typehash, intent.token, refundAmount, intent.validAfter, intent.validBefore),
+                abi.encode(
+                    intent.nonce, refundTo, cumulativePayerRefunded, cumulativeIncentiveRefunded, intent.attester
+                )
             )
         );
         bytes32 digest = _messageHash(structHash);
@@ -833,6 +839,8 @@ contract PaymentSettlementV2 is
                 intent,
                 intent.payerRefundAmount,
                 intent.payerRefundTo,
+                _cumulativePayerRefunded[intent.nonce],
+                _cumulativeIncentiveRefunded[intent.nonce],
                 payerSignature
             );
             emit PayerRefundVerified(intent.nonce, intent.payer);
@@ -846,6 +854,8 @@ contract PaymentSettlementV2 is
                 intent,
                 intent.incentiveProviderRefundAmount,
                 intent.incentiveProviderRefundTo,
+                _cumulativePayerRefunded[intent.nonce],
+                _cumulativeIncentiveRefunded[intent.nonce],
                 incentiveProviderSignature
             );
             emit IncentiveProviderRefundVerified(intent.nonce, intent.incentiveProvider);
@@ -898,16 +908,20 @@ contract PaymentSettlementV2 is
         IERC20 tokenContract = IERC20(intent.token);
 
         if (intent.payerRefundAmount > 0) {
+            if (intent.payerRefundTo == address(0)) revert InvalidRefundDestination(intent.payerRefundTo);
             tokenContract.safeTransfer(intent.payerRefundTo, intent.payerRefundAmount);
         }
         if (intent.incentiveProvider != address(0) && intent.incentiveProviderRefundAmount > 0) {
+            if (intent.incentiveProviderRefundTo == address(0)) {
+                revert InvalidRefundDestination(intent.incentiveProviderRefundTo);
+            }
             tokenContract.safeTransfer(intent.incentiveProviderRefundTo, intent.incentiveProviderRefundAmount);
         }
     }
 
     /// @dev Validates that the requested refund amounts do not exceed per-party caps and
-    ///      returns the new cumulative totals. Reverts with ZeroRefundAmount if both amounts
-    ///      are zero, with RefundExceedsCeiling if any cumulative total would exceed its cap.
+    ///      returns the new cumulative totals. Reverts with RefundExceedsCeiling if any
+    ///      cumulative total would exceed its cap.
     /// @param nonce The payment nonce to look up current cumulative totals
     /// @param payerRefundAmount Payer refund amount for this call
     /// @param incentiveProviderRefundAmount Incentive provider refund amount for this call
@@ -922,7 +936,6 @@ contract PaymentSettlementV2 is
         uint256 payerCap,
         uint256 incentiveCap
     ) internal view returns (uint256 newCumPayer, uint256 newCumIncentive) {
-        if (payerRefundAmount + incentiveProviderRefundAmount == 0) revert ZeroRefundAmount();
         uint256 cumPayer = _cumulativePayerRefunded[nonce];
         uint256 cumIncentive = _cumulativeIncentiveRefunded[nonce];
         newCumPayer = cumPayer + payerRefundAmount;

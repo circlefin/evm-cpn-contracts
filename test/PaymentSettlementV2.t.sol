@@ -92,6 +92,21 @@ contract DummyPermit2 is IMinimalPermit2, Test {
     }
 }
 
+/// @dev Harness to expose internal hash functions for testing
+contract PaymentSettlementV2Harness is PaymentSettlementV2 {
+    function exposed_hashPayeeRefundSource(RefundIntent calldata intent) external pure returns (bytes32) {
+        return _hashPayeeRefundSource(intent);
+    }
+
+    function exposed_hashBeneficiaryRefundSource(RefundIntent calldata intent) external pure returns (bytes32) {
+        return _hashBeneficiaryRefundSource(intent);
+    }
+
+    function exposed_hashPayerCancelPaymentIntent(PaymentIntent calldata intent) external pure returns (bytes32) {
+        return _hashPayerCancelPaymentIntent(intent);
+    }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
                                PaymentSettlement test-suite
    ────────────────────────────────────────────────────────────────────────────*/
@@ -1687,6 +1702,8 @@ contract PaymentSettlementV2Test is Test {
                 refIntent.validBefore,
                 paymentNonce,
                 incentiveProvider,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
                 attester
             )
         );
@@ -1948,6 +1965,8 @@ contract PaymentSettlementV2Test is Test {
                 refIntent.validBefore,
                 paymentNonce,
                 incentiveProvider,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
                 attester
             )
         );
@@ -2353,7 +2372,7 @@ contract PaymentSettlementV2Test is Test {
         payment.refund(refIntent, _emptyPermit2Data(), _emptyPermit2Data(), "", "");
     }
 
-    function testRefund_revertZeroRefundAmounts() public {
+    function testRefund_nonZeroPayment_refundZeroAmounts_succeeds() public {
         bytes32 paymentNonce = "zeroAmts";
 
         vm.prank(attester);
@@ -2379,14 +2398,9 @@ contract PaymentSettlementV2Test is Test {
             0
         );
 
-        address refundWallet = address(0xBEEF);
-        usdc.mint(refundWallet, 1 ether);
-        vm.prank(refundWallet);
-        usdc.approve(address(permit2), 1 ether);
-
         PaymentSettlementV2.RefundIntent memory refIntent = PaymentSettlementV2.RefundIntent({
             payer: payer,
-            payeeRefundFrom: refundWallet,
+            payeeRefundFrom: payee,
             beneficiaryRefundFrom: address(0),
             incentiveProvider: address(0),
             token: address(usdc),
@@ -2404,18 +2418,11 @@ contract PaymentSettlementV2Test is Test {
             requireDestinationRefundSig: false
         });
 
-        PaymentSettlementV2.Permit2Data memory payeeRefundData = PaymentSettlementV2.Permit2Data({
-            permit: IMinimalPermit2.PermitTransferFrom({
-                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 1 ether}),
-                nonce: 0,
-                deadline: block.timestamp + 1 days
-            }),
-            signature: ""
-        });
-
-        vm.expectRevert(PaymentSettlementV2.ZeroRefundAmount.selector);
         vm.prank(attester);
-        payment.refund(refIntent, payeeRefundData, _emptyPermit2Data(), "", "");
+        payment.refund(refIntent, _buildRefundPermit2Data(0), _emptyPermit2Data(), "", "");
+
+        // State stays Executed — cumulative 0 < cap 1 ether
+        assertEq(uint256(payment.getNonceStatus(paymentNonce)), uint256(PaymentSettlementV2.NonceStatus.Executed));
     }
 
     function testRefund_retrievesOriginalPayer() public {
@@ -2502,6 +2509,8 @@ contract PaymentSettlementV2Test is Test {
                 refIntent.validBefore,
                 paymentNonce,
                 incentiveProvider,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
                 attester
             )
         );
@@ -3075,6 +3084,8 @@ contract PaymentSettlementV2Test is Test {
                 refIntent.validBefore,
                 n,
                 incentiveProvider,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
                 attester
             )
         );
@@ -3379,7 +3390,7 @@ contract PaymentSettlementV2Test is Test {
 
     function testEIP712_payerCancelPaymentIntentTypehash() public view {
         bytes32 expectedTypehash =
-            keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee)");
+            keccak256("PaymentIntent(address from,bytes32 nonce,address beneficiary,uint256 maxFee,address attester)");
         assertEq(payment.PAYER_CANCEL_PAYMENT_INTENT_TYPEHASH(), expectedTypehash);
     }
 
@@ -3392,14 +3403,14 @@ contract PaymentSettlementV2Test is Test {
 
     function testEIP712_payerRefundTypehash() public view {
         bytes32 expectedTypehash = keccak256(
-            "PayerRefundIntent(address token,uint256 payerRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address payerRefundTo,address attester)"
+            "PayerRefundIntent(address token,uint256 payerRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address payerRefundTo,uint256 cumulativePayerRefunded,uint256 cumulativeIncentiveRefunded,address attester)"
         );
         assertEq(payment.PAYER_REFUND_TYPEHASH(), expectedTypehash);
     }
 
     function testEIP712_incentiveProviderRefundTypehash() public view {
         bytes32 expectedTypehash = keccak256(
-            "IncentiveProviderRefundIntent(address token,uint256 incentiveProviderRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address incentiveProviderRefundTo,address attester)"
+            "IncentiveProviderRefundIntent(address token,uint256 incentiveProviderRefundAmount,uint256 validAfter,uint256 validBefore,bytes32 nonce,address incentiveProviderRefundTo,uint256 cumulativePayerRefunded,uint256 cumulativeIncentiveRefunded,address attester)"
         );
         assertEq(payment.INCENTIVE_PROVIDER_REFUND_TYPEHASH(), expectedTypehash);
     }
@@ -3865,6 +3876,8 @@ contract PaymentSettlementV2Test is Test {
                 refIntent.validBefore,
                 paymentNonce,
                 payer,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
                 attester
             )
         );
@@ -4189,6 +4202,8 @@ contract PaymentSettlementV2Test is Test {
                 refIntent.validBefore,
                 paymentNonce,
                 payer,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
                 attester
             )
         );
@@ -4656,18 +4671,39 @@ contract PaymentSettlementV2Test is Test {
         payment.refund(ri2, _buildRefundPermit2Data(30 ether), _emptyPermit2Data(), "", "");
     }
 
-    function testRefund_zeroTotalRefund_reverts() public {
-        bytes32 n = _executeBasicPayment(payer, payee, 50 ether, 0, 50 ether);
+    function testRefund_zeroValuePayment_refundZero_finalizes() public {
+        // Execute a zero-value payment (payerAmount=0, fee=0, payeeSettlementAmount=0)
+        bytes32 n = keccak256(abi.encodePacked(payer, payee, uint256(0), uint256(0), uint256(0), block.timestamp));
 
-        address refundWallet = address(0x3009);
-        _setupRefundWallet(refundWallet, 50 ether);
+        PaymentSettlementV2.PaymentIntent memory intent = _buildPaymentIntent({
+            token_: address(usdc),
+            from_: payer,
+            to_: payee,
+            payerAmount_: 0,
+            payeeSettlementAmount_: 0,
+            maxFee_: 0,
+            beneficiary_: address(0),
+            incentiveProvider_: address(0),
+            nonce_: n,
+            validAfter_: 0,
+            validBefore_: block.timestamp + 1 days,
+            requirePayeeSign_: false,
+            attester_: attester
+        });
 
-        PaymentSettlementV2.RefundIntent memory refIntent =
-            _buildSimpleRefundIntent(n, 50 ether, 0, 50 ether, refundWallet, 0);
+        PaymentSettlementV2.Permit2Data memory pd = PaymentSettlementV2.Permit2Data({permit: _permit(0), signature: ""});
 
         vm.prank(attester);
-        vm.expectRevert(PaymentSettlementV2.ZeroRefundAmount.selector);
+        payment.execute(intent, pd, _emptyPermit2Data(), "", 0);
+        assertEq(uint256(payment.getNonceStatus(n)), uint256(PaymentSettlementV2.NonceStatus.Executed));
+
+        // Refund 0 → should finalize to Refunded (caps are both 0, cumulative 0==0)
+        PaymentSettlementV2.RefundIntent memory refIntent =
+            _buildRefundIntentNoIncentive(payer, payee, 0, 0, 0, n, 0, block.timestamp + 1 days, 0, payer, false);
+
+        vm.prank(attester);
         payment.refund(refIntent, _buildRefundPermit2Data(0), _emptyPermit2Data(), "", "");
+        assertEq(uint256(payment.getNonceStatus(n)), uint256(PaymentSettlementV2.NonceStatus.Refunded));
     }
 
     function testRefund_partialSucceeds_secondPullFails_progressUnchanged() public {
@@ -4703,5 +4739,699 @@ contract PaymentSettlementV2Test is Test {
         (uint256 cumPayerAfter, uint256 cumIncentiveAfter) = payment.getRefundProgress(n);
         assertEq(cumPayerAfter, 20 ether);
         assertEq(cumIncentiveAfter, 0);
+    }
+
+    function testRefund_revertPayerRefundToZeroAddress() public {
+        bytes32 n = _executeBasicPayment(payer, payee, 50 ether, 0, 50 ether);
+
+        address refundWallet = address(0x4001);
+        _setupRefundWallet(refundWallet, 50 ether);
+
+        PaymentSettlementV2.RefundIntent memory refIntent = PaymentSettlementV2.RefundIntent({
+            payer: payer,
+            payeeRefundFrom: refundWallet,
+            beneficiaryRefundFrom: address(0),
+            incentiveProvider: address(0),
+            token: address(usdc),
+            payerAmount: 50 ether,
+            payeeSettlementAmount: 50 ether,
+            fee: 0,
+            nonce: n,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            attester: attester,
+            payerRefundAmount: 50 ether,
+            incentiveProviderRefundAmount: 0,
+            payerRefundTo: address(0),
+            incentiveProviderRefundTo: address(0),
+            requireDestinationRefundSig: false
+        });
+
+        vm.prank(attester);
+        vm.expectRevert(abi.encodeWithSelector(PaymentSettlementV2.InvalidRefundDestination.selector, address(0)));
+        payment.refund(refIntent, _buildRefundPermit2Data(50 ether), _emptyPermit2Data(), "", "");
+    }
+
+    function testRefund_revertIncentiveProviderRefundToZeroAddress() public {
+        uint256 incentivePk = 0x5404;
+        address incentiveProvider = vm.addr(incentivePk);
+        usdc.mint(incentiveProvider, 100 ether);
+        vm.prank(incentiveProvider);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        bytes32 paymentNonce = "zeroIncentiveDest";
+        uint256 payerAmount = 85 ether;
+        uint256 incentiveAmount = 13 ether;
+
+        vm.prank(attester);
+        payment.execute(
+            _buildPaymentIntent({
+                token_: address(usdc),
+                from_: payer,
+                to_: payee,
+                payerAmount_: payerAmount,
+                payeeSettlementAmount_: payerAmount + incentiveAmount,
+                maxFee_: 0,
+                beneficiary_: address(0),
+                incentiveProvider_: incentiveProvider,
+                nonce_: paymentNonce,
+                validAfter_: 0,
+                validBefore_: block.timestamp + 100,
+                requirePayeeSign_: false,
+                attester_: attester
+            }),
+            PaymentSettlementV2.Permit2Data({permit: _permit(payerAmount), signature: ""}),
+            PaymentSettlementV2.Permit2Data({
+                permit: IMinimalPermit2.PermitTransferFrom({
+                    permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: incentiveAmount}),
+                    nonce: 0,
+                    deadline: block.timestamp + 1 days
+                }),
+                signature: ""
+            }),
+            "",
+            0
+        );
+
+        address refundWallet = address(0x4002);
+        usdc.mint(refundWallet, 100 ether);
+        vm.prank(refundWallet);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        // Build refund with incentiveProviderRefundTo = address(0)
+        PaymentSettlementV2.RefundIntent memory refIntent = PaymentSettlementV2.RefundIntent({
+            payer: payer,
+            payeeRefundFrom: refundWallet,
+            beneficiaryRefundFrom: address(0),
+            incentiveProvider: incentiveProvider,
+            token: address(usdc),
+            payerAmount: payerAmount,
+            payeeSettlementAmount: payerAmount + incentiveAmount,
+            fee: 0,
+            nonce: paymentNonce,
+            validAfter: 0,
+            validBefore: block.timestamp + 100,
+            attester: attester,
+            payerRefundAmount: payerAmount,
+            incentiveProviderRefundAmount: incentiveAmount,
+            payerRefundTo: payer,
+            incentiveProviderRefundTo: address(0),
+            requireDestinationRefundSig: false
+        });
+
+        // Incentive provider must sign refund (non-empty sig triggers validation)
+        bytes32 incentiveHash = keccak256(
+            abi.encode(
+                payment.INCENTIVE_PROVIDER_REFUND_TYPEHASH(),
+                address(usdc),
+                incentiveAmount,
+                refIntent.validAfter,
+                refIntent.validBefore,
+                paymentNonce,
+                address(0),
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
+                attester
+            )
+        );
+        bytes32 incentiveDigest = _computeTypedDataHash("PaymentSettlementV2", "1", address(payment), incentiveHash);
+        bytes memory incentiveSig = _sig(incentiveDigest, incentivePk);
+
+        PaymentSettlementV2.Permit2Data memory payeeRefundData = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: payerAmount + incentiveAmount}),
+                nonce: 0,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        vm.prank(attester);
+        vm.expectRevert(abi.encodeWithSelector(PaymentSettlementV2.InvalidRefundDestination.selector, address(0)));
+        payment.refund(refIntent, payeeRefundData, _emptyPermit2Data(), "", incentiveSig);
+    }
+
+    function testEIP712_payeeRefundSourceTypehash() public view {
+        bytes32 expectedTypehash = keccak256(
+            "PayeeRefundSourceIntent(address payeeRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,bool requireDestinationRefundSig,address attester)"
+        );
+        assertEq(payment.PAYEE_REFUND_SOURCE_TYPEHASH(), expectedTypehash);
+    }
+
+    function testEIP712_beneficiaryRefundSourceTypehash() public view {
+        bytes32 expectedTypehash = keccak256(
+            "BeneficiaryRefundSourceIntent(address beneficiaryRefundFrom,uint256 validAfter,uint256 validBefore,bytes32 nonce,uint256 payerRefundAmount,uint256 incentiveProviderRefundAmount,address payerRefundTo,address incentiveProviderRefundTo,bool requireDestinationRefundSig,address attester)"
+        );
+        assertEq(payment.BENEFICIARY_REFUND_SOURCE_TYPEHASH(), expectedTypehash);
+    }
+
+    function testOQ1_requireDestinationRefundSig_affectsRefundSourceHash() public {
+        // Deploy harness
+        PaymentSettlementV2Harness harness = new PaymentSettlementV2Harness();
+
+        // Build two identical RefundIntents, differing only in requireDestinationRefundSig
+        PaymentSettlementV2.RefundIntent memory intentFalse = PaymentSettlementV2.RefundIntent({
+            token: address(usdc),
+            payer: payer,
+            payeeRefundFrom: payee,
+            payerAmount: 50 ether,
+            payeeSettlementAmount: 50 ether,
+            fee: 0,
+            payerRefundAmount: 50 ether,
+            incentiveProviderRefundAmount: 0,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: "oq1test",
+            incentiveProvider: address(0),
+            beneficiaryRefundFrom: address(0),
+            payerRefundTo: payer,
+            incentiveProviderRefundTo: address(0),
+            requireDestinationRefundSig: false,
+            attester: attester
+        });
+
+        PaymentSettlementV2.RefundIntent memory intentTrue = PaymentSettlementV2.RefundIntent({
+            token: address(usdc),
+            payer: payer,
+            payeeRefundFrom: payee,
+            payerAmount: 50 ether,
+            payeeSettlementAmount: 50 ether,
+            fee: 0,
+            payerRefundAmount: 50 ether,
+            incentiveProviderRefundAmount: 0,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: "oq1test",
+            incentiveProvider: address(0),
+            beneficiaryRefundFrom: address(0),
+            payerRefundTo: payer,
+            incentiveProviderRefundTo: address(0),
+            requireDestinationRefundSig: true,
+            attester: attester
+        });
+
+        // Hash must differ when only requireDestinationRefundSig changes
+        bytes32 hashFalse = harness.exposed_hashPayeeRefundSource(intentFalse);
+        bytes32 hashTrue = harness.exposed_hashPayeeRefundSource(intentTrue);
+        assertTrue(hashFalse != hashTrue, "requireDestinationRefundSig must affect payee refund source hash");
+
+        // Same check for beneficiary side
+        intentFalse.beneficiaryRefundFrom = address(0xBEEF);
+        intentTrue.beneficiaryRefundFrom = address(0xBEEF);
+        bytes32 benHashFalse = harness.exposed_hashBeneficiaryRefundSource(intentFalse);
+        bytes32 benHashTrue = harness.exposed_hashBeneficiaryRefundSource(intentTrue);
+        assertTrue(
+            benHashFalse != benHashTrue, "requireDestinationRefundSig must affect beneficiary refund source hash"
+        );
+    }
+
+    function testCS001_cancelIntentAttester_affectsHash() public {
+        PaymentSettlementV2Harness harness = new PaymentSettlementV2Harness();
+
+        address attesterA = address(0xA001);
+        address attesterB = address(0xA002);
+
+        PaymentSettlementV2.PaymentIntent memory intentA = _buildPaymentIntent({
+            token_: address(usdc),
+            from_: payer,
+            to_: address(0),
+            payerAmount_: 0,
+            payeeSettlementAmount_: 0,
+            maxFee_: 1 ether,
+            beneficiary_: feeSink,
+            incentiveProvider_: address(0),
+            nonce_: "cs001test",
+            validAfter_: 0,
+            validBefore_: 0,
+            requirePayeeSign_: false,
+            attester_: attesterA
+        });
+
+        PaymentSettlementV2.PaymentIntent memory intentB = _buildPaymentIntent({
+            token_: address(usdc),
+            from_: payer,
+            to_: address(0),
+            payerAmount_: 0,
+            payeeSettlementAmount_: 0,
+            maxFee_: 1 ether,
+            beneficiary_: feeSink,
+            incentiveProvider_: address(0),
+            nonce_: "cs001test",
+            validAfter_: 0,
+            validBefore_: 0,
+            requirePayeeSign_: false,
+            attester_: attesterB
+        });
+
+        bytes32 hashA = harness.exposed_hashPayerCancelPaymentIntent(intentA);
+        bytes32 hashB = harness.exposed_hashPayerCancelPaymentIntent(intentB);
+        assertTrue(hashA != hashB, "attester field must differentiate cancel intent hash");
+    }
+
+    /// @notice CS-002: destination signature replay prevention — same payer destination sig
+    ///         must revert on second refund because cumulative values have changed.
+    function testRefund_revertDestinationSignatureReplay() public {
+        uint256 payerPk_ = 0x1234;
+        address testPayer = vm.addr(payerPk_);
+        usdc.mint(testPayer, 200 ether);
+        vm.prank(testPayer);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        // Payee needs balance + approve for refund source (DummyPermit2 does real transferFrom)
+        usdc.mint(payee, 200 ether);
+        vm.prank(payee);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        bytes32 n = "replayTest";
+        uint256 payerAmount = 100 ether;
+
+        // Execute payment
+        vm.prank(attester);
+        payment.execute(
+            _buildPaymentIntent({
+                token_: address(usdc),
+                from_: testPayer,
+                to_: payee,
+                payerAmount_: payerAmount,
+                payeeSettlementAmount_: payerAmount,
+                maxFee_: 0,
+                beneficiary_: payee,
+                incentiveProvider_: address(0),
+                nonce_: n,
+                validAfter_: 0,
+                validBefore_: block.timestamp + 1 days,
+                requirePayeeSign_: false,
+                attester_: attester
+            }),
+            PaymentSettlementV2.Permit2Data({permit: _permit(payerAmount), signature: ""}),
+            _emptyPermit2Data(),
+            "",
+            0
+        );
+
+        // Build refund intent: partial refund 50 of 100, requireDestinationRefundSig=true
+        PaymentSettlementV2.RefundIntent memory refIntent = _buildRefundIntentNoIncentive(
+            testPayer, payee, payerAmount, payerAmount, 0, n, 0, block.timestamp + 1 days, 50 ether, testPayer, true
+        );
+
+        // Payer signs destination sig with cumulativePayerRefunded=0, cumulativeIncentiveRefunded=0
+        bytes32 structHash = keccak256(
+            abi.encode(
+                payment.PAYER_REFUND_TYPEHASH(),
+                address(usdc),
+                50 ether,
+                refIntent.validAfter,
+                refIntent.validBefore,
+                n,
+                testPayer,
+                0, // cumulativePayerRefunded
+                0, // cumulativeIncentiveRefunded
+                attester
+            )
+        );
+        bytes32 digest = _computeTypedDataHash("PaymentSettlementV2", "1", address(payment), structHash);
+        bytes memory payerSig = _sig(digest, payerPk_);
+
+        // First refund: should succeed
+        PaymentSettlementV2.Permit2Data memory payeeRefundData = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 50 ether}),
+                nonce: 0,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        vm.prank(attester);
+        payment.refund(refIntent, payeeRefundData, _emptyPermit2Data(), payerSig, "");
+
+        // Second refund attempt: same destination sig, fresh source Permit2
+        PaymentSettlementV2.Permit2Data memory payeeRefundData2 = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 50 ether}),
+                nonce: 1,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        // Should revert: cumulativePayerRefunded is now 50 ether, but sig was signed for 0
+        vm.prank(attester);
+        vm.expectRevert(PaymentSettlementV2.InvalidSignature.selector);
+        payment.refund(refIntent, payeeRefundData2, _emptyPermit2Data(), payerSig, "");
+    }
+
+    /// @notice CS-002: incentive provider destination signature replay prevention — same
+    ///         incentive provider destination sig must revert on second refund because
+    ///         cumulativeIncentiveRefunded has changed.
+    function testRefund_revertIncentiveProviderDestinationSignatureReplay() public {
+        uint256 incentivePk_ = 0x5404;
+        address testIncentiveProvider = vm.addr(incentivePk_);
+        usdc.mint(testIncentiveProvider, 200 ether);
+        vm.prank(testIncentiveProvider);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        uint256 payerAmount = 80 ether;
+        uint256 incentiveAmount = 20 ether;
+        uint256 payeeSettlement = payerAmount + incentiveAmount; // 100 ether
+
+        usdc.mint(payer, 200 ether);
+        vm.prank(payer);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        // Payee needs balance + approve for refund source
+        usdc.mint(payee, 200 ether);
+        vm.prank(payee);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        bytes32 n = "ipReplayTest";
+
+        // Execute payment with incentive provider
+        vm.prank(attester);
+        payment.execute(
+            _buildPaymentIntent({
+                token_: address(usdc),
+                from_: payer,
+                to_: payee,
+                payerAmount_: payerAmount,
+                payeeSettlementAmount_: payeeSettlement,
+                maxFee_: 0,
+                beneficiary_: payee,
+                incentiveProvider_: testIncentiveProvider,
+                nonce_: n,
+                validAfter_: 0,
+                validBefore_: block.timestamp + 1 days,
+                requirePayeeSign_: false,
+                attester_: attester
+            }),
+            PaymentSettlementV2.Permit2Data({permit: _permit(payerAmount), signature: ""}),
+            PaymentSettlementV2.Permit2Data({
+                permit: IMinimalPermit2.PermitTransferFrom({
+                    permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: incentiveAmount}),
+                    nonce: 0,
+                    deadline: block.timestamp + 1 days
+                }),
+                signature: ""
+            }),
+            "",
+            0
+        );
+
+        // Build refund intent: partial refund 10 of 20 incentive, requireDestinationRefundSig=true
+        PaymentSettlementV2.RefundIntent memory refIntent = PaymentSettlementV2.RefundIntent({
+            token: address(usdc),
+            payer: payer,
+            payeeRefundFrom: payee,
+            payerAmount: payerAmount,
+            payeeSettlementAmount: payeeSettlement,
+            fee: 0,
+            payerRefundAmount: 0,
+            incentiveProviderRefundAmount: 10 ether,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: n,
+            incentiveProvider: testIncentiveProvider,
+            beneficiaryRefundFrom: address(0),
+            payerRefundTo: payer,
+            incentiveProviderRefundTo: testIncentiveProvider,
+            requireDestinationRefundSig: true,
+            attester: attester
+        });
+
+        // Payer signs destination sig (payerRefundAmount=0) with cumulativePayerRefunded=0,
+        // cumulativeIncentiveRefunded=0
+        bytes memory payerSig;
+        {
+            bytes32 h = keccak256(
+                abi.encodePacked(
+                    abi.encode(
+                        payment.PAYER_REFUND_TYPEHASH(),
+                        address(usdc),
+                        uint256(0),
+                        refIntent.validAfter,
+                        refIntent.validBefore
+                    ),
+                    abi.encode(n, payer, uint256(0), uint256(0), attester)
+                )
+            );
+            payerSig = _sig(_computeTypedDataHash("PaymentSettlementV2", "1", address(payment), h), payerPk);
+        }
+
+        // Incentive provider signs destination sig with cumulativePayerRefunded=0, cumulativeIncentiveRefunded=0
+        bytes memory incentiveSig;
+        {
+            bytes32 h = keccak256(
+                abi.encodePacked(
+                    abi.encode(
+                        payment.INCENTIVE_PROVIDER_REFUND_TYPEHASH(),
+                        address(usdc),
+                        uint256(10 ether),
+                        refIntent.validAfter,
+                        refIntent.validBefore
+                    ),
+                    abi.encode(n, testIncentiveProvider, uint256(0), uint256(0), attester)
+                )
+            );
+            incentiveSig = _sig(_computeTypedDataHash("PaymentSettlementV2", "1", address(payment), h), incentivePk_);
+        }
+
+        // First refund: should succeed
+        PaymentSettlementV2.Permit2Data memory payeeRefundData = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 10 ether}),
+                nonce: 0,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        vm.prank(attester);
+        payment.refund(refIntent, payeeRefundData, _emptyPermit2Data(), payerSig, incentiveSig);
+
+        // Second refund attempt: same destination sig, fresh source Permit2
+        PaymentSettlementV2.Permit2Data memory payeeRefundData2 = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 10 ether}),
+                nonce: 1,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        // Should revert: cumulativeIncentiveRefunded is now 10 ether, but sig was signed for 0
+        vm.prank(attester);
+        vm.expectRevert(PaymentSettlementV2.InvalidSignature.selector);
+        payment.refund(refIntent, payeeRefundData2, _emptyPermit2Data(), payerSig, incentiveSig);
+    }
+
+    /// @notice CS-002 v2: cross-path replay prevention — payer-only refund invalidates
+    ///         incentive provider destination sig because cumulativePayerRefunded changed.
+    ///         Uses freshly signed payer sig (updated cumulative) + old incentive sig
+    ///         (stale cumulativePayerRefunded=0). Payer sig passes; incentive sig reverts.
+    function testRefund_revertCrossPathIncentiveSignatureReplay() public {
+        uint256 incentivePk_ = 0x5404;
+        address testIncentiveProvider = vm.addr(incentivePk_);
+        usdc.mint(testIncentiveProvider, 200 ether);
+        vm.prank(testIncentiveProvider);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        // Payee needs balance + approve for refund source (DummyPermit2 does real transferFrom)
+        usdc.mint(payee, 200 ether);
+        vm.prank(payee);
+        usdc.approve(address(permit2), type(uint256).max);
+
+        uint256 payerAmount = 80 ether;
+        uint256 incentiveAmount = 20 ether;
+        uint256 payeeSettlement = payerAmount + incentiveAmount; // 100 ether
+        bytes32 n = "crossPathReplay";
+
+        // Execute payment with incentive provider
+        vm.prank(attester);
+        payment.execute(
+            _buildPaymentIntent({
+                token_: address(usdc),
+                from_: payer,
+                to_: payee,
+                payerAmount_: payerAmount,
+                payeeSettlementAmount_: payeeSettlement,
+                maxFee_: 0,
+                beneficiary_: payee,
+                incentiveProvider_: testIncentiveProvider,
+                nonce_: n,
+                validAfter_: 0,
+                validBefore_: block.timestamp + 1 days,
+                requirePayeeSign_: false,
+                attester_: attester
+            }),
+            PaymentSettlementV2.Permit2Data({permit: _permit(payerAmount), signature: ""}),
+            PaymentSettlementV2.Permit2Data({
+                permit: IMinimalPermit2.PermitTransferFrom({
+                    permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: incentiveAmount}),
+                    nonce: 0,
+                    deadline: block.timestamp + 1 days
+                }),
+                signature: ""
+            }),
+            "",
+            0
+        );
+
+        // ---- First refund: payer-only, 40 of 80 ----
+        PaymentSettlementV2.RefundIntent memory refIntent1 = PaymentSettlementV2.RefundIntent({
+            token: address(usdc),
+            payer: payer,
+            payeeRefundFrom: payee,
+            payerAmount: payerAmount,
+            payeeSettlementAmount: payeeSettlement,
+            fee: 0,
+            payerRefundAmount: 40 ether,
+            incentiveProviderRefundAmount: 0,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: n,
+            incentiveProvider: testIncentiveProvider,
+            beneficiaryRefundFrom: address(0),
+            payerRefundTo: payer,
+            incentiveProviderRefundTo: testIncentiveProvider,
+            requireDestinationRefundSig: true,
+            attester: attester
+        });
+
+        // Payer signs with pre-refund state: cumulativePayerRefunded=0, cumulativeIncentiveRefunded=0
+        bytes memory payerSig1;
+        {
+            bytes32 h = keccak256(
+                abi.encodePacked(
+                    abi.encode(
+                        payment.PAYER_REFUND_TYPEHASH(),
+                        address(usdc),
+                        uint256(40 ether),
+                        refIntent1.validAfter,
+                        refIntent1.validBefore
+                    ),
+                    abi.encode(n, payer, uint256(0), uint256(0), attester)
+                )
+            );
+            payerSig1 = _sig(_computeTypedDataHash("PaymentSettlementV2", "1", address(payment), h), payerPk);
+        }
+
+        PaymentSettlementV2.Permit2Data memory payeeRefundData1 = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 40 ether}),
+                nonce: 0,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        // requireDestinationRefundSig=true && isIncentiveCase=true → incentive sig check triggered.
+        // Must provide valid incentive sig for amount=0.
+        bytes memory incentiveSig0;
+        {
+            bytes32 h = keccak256(
+                abi.encodePacked(
+                    abi.encode(
+                        payment.INCENTIVE_PROVIDER_REFUND_TYPEHASH(),
+                        address(usdc),
+                        uint256(0),
+                        refIntent1.validAfter,
+                        refIntent1.validBefore
+                    ),
+                    abi.encode(n, testIncentiveProvider, uint256(0), uint256(0), attester)
+                )
+            );
+            incentiveSig0 = _sig(_computeTypedDataHash("PaymentSettlementV2", "1", address(payment), h), incentivePk_);
+        }
+
+        vm.prank(attester);
+        payment.refund(refIntent1, payeeRefundData1, _emptyPermit2Data(), payerSig1, incentiveSig0);
+
+        // State after first refund: cumulativePayerRefunded=40 ether, cumulativeIncentiveRefunded=0
+
+        // ---- Pre-sign incentive sig BEFORE second refund (signs stale cumulativePayerRefunded=0) ----
+        // This is the "old" incentive sig that should be invalidated by cross-path state change
+        bytes memory staleIncentiveSig;
+        {
+            bytes32 h = keccak256(
+                abi.encodePacked(
+                    abi.encode(
+                        payment.INCENTIVE_PROVIDER_REFUND_TYPEHASH(),
+                        address(usdc),
+                        10 ether, // incentiveProviderRefundAmount
+                        uint256(0), // validAfter
+                        block.timestamp + 1 days // validBefore
+                    ),
+                    abi.encode(
+                        n,
+                        testIncentiveProvider,
+                        uint256(0), // cumulativePayerRefunded: STALE — should be 40 ether
+                        uint256(0), // cumulativeIncentiveRefunded: 0 (correct, unchanged)
+                        attester
+                    )
+                )
+            );
+            staleIncentiveSig =
+                _sig(_computeTypedDataHash("PaymentSettlementV2", "1", address(payment), h), incentivePk_);
+        }
+
+        // ---- Second refund: payer + incentive, using fresh payer sig + stale incentive sig ----
+        PaymentSettlementV2.RefundIntent memory refIntent2 = PaymentSettlementV2.RefundIntent({
+            token: address(usdc),
+            payer: payer,
+            payeeRefundFrom: payee,
+            payerAmount: payerAmount,
+            payeeSettlementAmount: payeeSettlement,
+            fee: 0,
+            payerRefundAmount: 10 ether,
+            incentiveProviderRefundAmount: 10 ether,
+            validAfter: 0,
+            validBefore: block.timestamp + 1 days,
+            nonce: n,
+            incentiveProvider: testIncentiveProvider,
+            beneficiaryRefundFrom: address(0),
+            payerRefundTo: payer,
+            incentiveProviderRefundTo: testIncentiveProvider,
+            requireDestinationRefundSig: true,
+            attester: attester
+        });
+
+        // Fresh payer sig with CORRECT cumulativePayerRefunded=40 ether
+        bytes memory freshPayerSig;
+        {
+            bytes32 h = keccak256(
+                abi.encodePacked(
+                    abi.encode(
+                        payment.PAYER_REFUND_TYPEHASH(),
+                        address(usdc),
+                        uint256(10 ether),
+                        refIntent2.validAfter,
+                        refIntent2.validBefore
+                    ),
+                    abi.encode(
+                        n,
+                        payer,
+                        uint256(40 ether), // cumulativePayerRefunded: updated after first refund
+                        uint256(0), // cumulativeIncentiveRefunded: 0 (unchanged)
+                        attester
+                    )
+                )
+            );
+            freshPayerSig = _sig(_computeTypedDataHash("PaymentSettlementV2", "1", address(payment), h), payerPk);
+        }
+
+        PaymentSettlementV2.Permit2Data memory payeeRefundData2 = PaymentSettlementV2.Permit2Data({
+            permit: IMinimalPermit2.PermitTransferFrom({
+                permitted: IMinimalPermit2.TokenPermissions({token: address(usdc), amount: 20 ether}),
+                nonce: 1,
+                deadline: block.timestamp + 1 days
+            }),
+            signature: ""
+        });
+
+        // Should revert InvalidSignature: payer sig passes (L839), but incentive sig (L853)
+        // fails because on-chain cumulativePayerRefunded is 40 ether, not the 0 in stale sig
+        vm.prank(attester);
+        vm.expectRevert(PaymentSettlementV2.InvalidSignature.selector);
+        payment.refund(refIntent2, payeeRefundData2, _emptyPermit2Data(), freshPayerSig, staleIncentiveSig);
     }
 }
