@@ -25,5 +25,14 @@
   "devDependencies": {
     "solhint": "^5.1.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.5"
+  },
+  "resolutions": {
+    "solhint/ajv": "6.14.0",
+    "solhint/table/ajv": "8.18.0",
+    "fast-uri": "3.1.2",
+    "solhint/glob/minimatch": "5.1.8",
+    "brace-expansion": "2.0.3",
+    "solhint/js-yaml": "4.1.1",
+    "solhint/cosmiconfig/js-yaml": "4.1.1"
   }
 }
