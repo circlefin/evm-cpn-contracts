@@ -5,17 +5,9 @@ on:
     branches: [main]
 jobs:
   lint_and_test:
-    runs-on: small-dind-spot
-    permissions:
-      id-token: write
+    runs-on: github-hosted-small
 
     steps:
-      - name: Harden the runner
-        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
-        with:
-          egress-policy: block
-          policy: global-allowed-endpoints-policy
-
       - name: Check out repository code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
