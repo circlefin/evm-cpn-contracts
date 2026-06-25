@@ -14,8 +14,8 @@ Onchain payment settlement for Circle Payments Network:
 
 1. Run `git submodule update --init --recursive` to update/download all libraries.
 2. Run `yarn install` to install any additional dependencies.
-3. Run `curl -L https://foundry.paradigm.xyz | bash` and follow the outputted instructions to source env file. 
-4. Run `foundryup`
+3. Run `curl -L https://foundry.paradigm.xyz | bash` and follow the outputted instructions to source env file.
+4. Run `foundryup`.
 
 ### VS Code Setup
 
