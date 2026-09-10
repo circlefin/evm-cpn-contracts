@@ -188,6 +188,15 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
     /// @notice Thrown when renouncing ownership is disabled
     error RenounceOwnershipDisabled();
 
+    /// @notice Thrown when adding an attester that is already authorized
+    error AttesterAlreadyAdded(address attester);
+
+    /// @notice Thrown when removing an attester that is not authorized
+    error AttesterNotFound(address attester);
+
+    /// @notice Thrown when an attester address is the zero address
+    error AttesterZeroAddress();
+
     /// @notice Initializes ownership to the deployer
     /// @dev Call `initialize` once after deployment to set roles and the attester set
     // slither-disable-next-line dead-code
@@ -230,10 +239,11 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
         uint256 len = attesters_.length;
         for (uint256 i; i < len; ++i) {
             address a = attesters_[i];
-            if (!_attesters[a]) {
-                _attesters[a] = true;
-                emit AttesterAdded(a);
-            }
+            if (a == address(0)) revert AttesterZeroAddress();
+            if (_attesters[a]) revert AttesterAlreadyAdded(a);
+
+            _attesters[a] = true;
+            emit AttesterAdded(a);
         }
     }
 
@@ -300,19 +310,20 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
     /// @notice Adds a new attester address
     /// @param attester_ Address to be granted attester role
     function addAttester(address attester_) external onlyConfigurator {
-        if (!_attesters[attester_]) {
-            _attesters[attester_] = true;
-            emit AttesterAdded(attester_);
-        }
+        if (attester_ == address(0)) revert AttesterZeroAddress();
+        if (_attesters[attester_]) revert AttesterAlreadyAdded(attester_);
+
+        _attesters[attester_] = true;
+        emit AttesterAdded(attester_);
     }
 
     /// @notice Removes an attester address
     /// @param attester_ Address to be revoked from attester role
     function removeAttester(address attester_) external onlyConfigurator {
-        if (_attesters[attester_]) {
-            delete _attesters[attester_];
-            emit AttesterRemoved(attester_);
-        }
+        if (!_attesters[attester_]) revert AttesterNotFound(attester_);
+
+        delete _attesters[attester_];
+        emit AttesterRemoved(attester_);
     }
 
     /// @notice Checks whether an address is a valid attester

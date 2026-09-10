@@ -475,6 +475,15 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         fresh.initialize(IMinimalPermit2(address(permit2)), address(0), rescuer, pauser, configurator, new address[](0));
     }
 
+    function testInitialize_rejectsZeroAddressAttester() public {
+        BatchPayment fresh = new BatchPayment();
+        address[] memory attesters = new address[](1);
+        attesters[0] = address(0);
+
+        vm.expectRevert(BatchPayment.AttesterZeroAddress.selector);
+        fresh.initialize(IMinimalPermit2(address(permit2)), address(this), rescuer, pauser, configurator, attesters);
+    }
+
     function testExecute_acceptsZeroNonce() public {
         BatchPayment.Payment[] memory payments = _buildPayments(1, 10e6, 0);
         BatchPayment.BatchPaymentIntent memory intent = _intent(10e6, 0);
@@ -649,15 +658,47 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         assertTrue(bpc.isAttester(newAttester));
 
         vm.prank(configurator);
-        bpc.addAttester(newAttester);
-        vm.prank(configurator);
         bpc.removeAttester(newAttester);
         assertFalse(bpc.isAttester(newAttester));
-        vm.prank(configurator);
-        bpc.removeAttester(newAttester);
 
         vm.expectRevert(BatchPayment.RenounceOwnershipDisabled.selector);
         bpc.renounceOwnership();
+    }
+
+    function testAttesterManagement_revertsOnInvalidStateTransitions() public {
+        address freshAttester = makeAddr("freshAttester");
+
+        vm.prank(configurator);
+        vm.expectRevert(abi.encodeWithSelector(BatchPayment.AttesterAlreadyAdded.selector, attester));
+        bpc.addAttester(attester);
+
+        vm.prank(configurator);
+        vm.expectRevert(abi.encodeWithSelector(BatchPayment.AttesterNotFound.selector, freshAttester));
+        bpc.removeAttester(freshAttester);
+    }
+
+    function testAddAttester_revertsForZeroAddress() public {
+        vm.prank(configurator);
+        vm.expectRevert(BatchPayment.AttesterZeroAddress.selector);
+        bpc.addAttester(address(0));
+    }
+
+    function testExecuteBatchPayment_allowsMoreThan1000Rows() public {
+        uint256 rowCount = 1_001;
+        BatchPayment.Payment[] memory payments = _buildPayments(rowCount, 0, 0);
+        BatchPayment.BatchPaymentIntent memory intent = _intent(0, 0);
+        BatchPayment.PayerData memory data = _payerData(intent, payments, 0, PAYER_PK);
+
+        vm.mockCallRevert(
+            address(usdc),
+            abi.encodeWithSelector(IERC20.transfer.selector, payments[0].to, uint256(0)),
+            bytes("refused")
+        );
+        vm.prank(attester);
+        bpc.execute(intent, payments, data, 0, false);
+        assertTrue(bpc.isNonceUsed(intent.nonce));
+        (,,, bytes memory skippedRows) = bpc.batchPaymentResult(intent.nonce, payments);
+        assertEq(skippedRows.length, 126);
     }
 
     function testHashPayments_matchesIndependentValue() public view {
@@ -890,15 +931,8 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         assertEq(skippedRows, hex"0201", "bitmap withheld when rows do not match");
     }
 
-    function testAttesterManagement_guardsSpuriousEvents() public {
+    function testAttesterManagement_emitsEventsForStateTransitions() public {
         address fresh = makeAddr("freshAttester");
-
-        vm.recordLogs();
-        vm.startPrank(configurator);
-        bpc.addAttester(attester);
-        bpc.removeAttester(fresh);
-        vm.stopPrank();
-        assertEq(vm.getRecordedLogs().length, 0, "re-add or absent-remove emitted");
 
         vm.recordLogs();
         vm.startPrank(configurator);
@@ -914,12 +948,11 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         assertFalse(bpc.isAttester(fresh));
     }
 
-    function testInitialize_emitsAttesterAddedOncePerUniqueAttester() public {
+    function testInitialize_emitsAttesterAddedForUniqueAttesters() public {
         BatchPayment freshContract = new BatchPayment();
-        address[] memory attesters = new address[](3);
+        address[] memory attesters = new address[](2);
         attesters[0] = attester;
-        attesters[1] = attester;
-        attesters[2] = makeAddr("secondAttester");
+        attesters[1] = makeAddr("secondAttester");
 
         vm.recordLogs();
         freshContract.initialize(
@@ -927,11 +960,21 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        assertEq(
-            _countEvent(logs, BatchPayment.AttesterAdded.selector, attester), 1, "duplicate attester emitted twice"
+        assertEq(_countEvent(logs, BatchPayment.AttesterAdded.selector, attester), 1);
+        assertEq(_countEvent(logs, BatchPayment.AttesterAdded.selector, attesters[1]), 1);
+        assertTrue(freshContract.isAttester(attesters[1]));
+    }
+
+    function testInitialize_rejectsDuplicateAttesters() public {
+        BatchPayment freshContract = new BatchPayment();
+        address[] memory attesters = new address[](2);
+        attesters[0] = attester;
+        attesters[1] = attester;
+
+        vm.expectRevert(abi.encodeWithSelector(BatchPayment.AttesterAlreadyAdded.selector, attester));
+        freshContract.initialize(
+            IMinimalPermit2(address(permit2)), address(this), rescuer, pauser, configurator, attesters
         );
-        assertEq(_countEvent(logs, BatchPayment.AttesterAdded.selector, attesters[2]), 1);
-        assertTrue(freshContract.isAttester(attesters[2]));
     }
 
     function testInitialize_emitsPermit2SetExactlyOnce() public {
