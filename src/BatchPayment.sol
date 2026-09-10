@@ -34,6 +34,10 @@ import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/Reentrancy
 /// @dev Settlement is partial: a refused row is skipped and recorded in `skippedRows` while its
 ///      neighbours settle, so a successful transaction does not mean every row was paid. `execute`'s
 ///      unsigned `requireAllRows` flag makes a single call all-or-nothing instead.
+/// @dev A skipped row means the token call did not return success. An out-of-gas inside the token is
+///      indistinguishable from an explicit refusal, and the attester controls the transaction gas limit,
+///      so `skippedRows` is only as trustworthy as the attester. Accepted under the trusted-attester
+///      model; a reverted settlement leaves state and token balances unchanged.
 /// @dev Replay is guarded per transaction, not per row: the same rows re-signed under a fresh nonce are
 ///      paid again, so row-level not-paying-twice is an offchain guarantee.
 contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardTransient, Rescuable, Configurable {
@@ -102,6 +106,9 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
     /// @notice Emitted when an attester is removed
     event AttesterRemoved(address indexed attester);
 
+    /// @notice Emitted when Permit2 is assigned during initialization
+    event Permit2Set(address indexed permit2);
+
     /// @notice Emitted once per settled transaction
     /// @dev `distributed` is the amount debited for successful rows. `skippedRows` is one bit per row,
     ///      LSB-first within each byte, empty when none were skipped; bits past the last row are zero
@@ -128,6 +135,9 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
 
     /// @notice Thrown when an attester is invalid
     error InvalidAttester(address sender);
+
+    /// @notice Thrown when a registered attester does not match the attester named in an intent
+    error AttesterMismatch(address sender, address attester);
 
     /// @notice Thrown when an owner is invalid
     error InvalidOwner(address owner);
@@ -210,6 +220,7 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
         if (owner_ == address(0)) revert InvalidOwner(owner_);
 
         permit2 = permit2_;
+        emit Permit2Set(address(permit2_));
 
         _transferOwnership(owner_);
         _initializePauser(pauser_);
@@ -251,7 +262,7 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
         uint256 fee,
         bool requireAllRows
     ) external nonReentrant whenNotPaused onlyAttester {
-        if (_msgSender() != intent.attester) revert InvalidAttester(_msgSender());
+        if (_msgSender() != intent.attester) revert AttesterMismatch(_msgSender(), intent.attester);
 
         if (_nonceUsed[intent.nonce]) revert AlreadyUsed(intent.nonce);
 
@@ -261,11 +272,8 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
         if (fee > intent.maxFee) revert FeeExceedsMax(fee, intent.maxFee);
 
         address token = payerData.permit.permitted.token;
-        // Block-scoped so the figure does not stay live through the row loop.
-        {
-            uint256 permitted = intent.totalValue + intent.maxFee;
-            if (payerData.permit.permitted.amount != permitted) revert PermitAmountMismatch();
-        }
+        uint256 permitted = intent.totalValue + intent.maxFee;
+        if (payerData.permit.permitted.amount != permitted) revert PermitAmountMismatch();
 
         bytes32 paymentsHash = _validateAndHashPayments(payments, intent.totalValue);
 
@@ -474,7 +482,6 @@ contract BatchPayment is Ownable2Step, Initializable, Pausable, ReentrancyGuardT
     }
 
     /// @dev Verifies the fee transfer moved exactly the charged fee, leaving the principal untouched.
-    ///      Kept in its own frame because `execute` has no stack room for the two locals.
     /// @param token Settlement token
     /// @param expectedSelf Balance this contract should hold once the fee has left - its pre-settlement
     ///        balance plus the whole principal

@@ -456,11 +456,16 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(BatchPayment.InvalidAttester.selector, stranger));
         bpc.execute(intent, payments, data, 0, false);
+    }
 
-        intent.nonce = _nonce(1);
-        intent.attester = stranger;
+    function testExecuteBatchPayment_rejectsRegisteredAttesterMismatchingIntent() public {
+        BatchPayment.Payment[] memory payments = _buildPayments(1, 10e6, 0);
+        BatchPayment.BatchPaymentIntent memory intent = _intent(10e6, 0);
+        BatchPayment.PayerData memory data = _payerData(intent, payments, 0, PAYER_PK);
+
+        intent.attester = makeAddr("otherAttester");
         vm.prank(attester);
-        vm.expectRevert(abi.encodeWithSelector(BatchPayment.InvalidAttester.selector, attester));
+        vm.expectRevert(abi.encodeWithSelector(BatchPayment.AttesterMismatch.selector, attester, intent.attester));
         bpc.execute(intent, payments, data, 0, false);
     }
 
@@ -927,6 +932,43 @@ contract BatchPaymentTest is BatchPaymentTestFixture {
         );
         assertEq(_countEvent(logs, BatchPayment.AttesterAdded.selector, attesters[2]), 1);
         assertTrue(freshContract.isAttester(attesters[2]));
+    }
+
+    function testInitialize_emitsPermit2SetExactlyOnce() public {
+        BatchPayment freshContract = new BatchPayment();
+        address[] memory attesters = new address[](1);
+        attesters[0] = attester;
+
+        vm.recordLogs();
+        freshContract.initialize(
+            IMinimalPermit2(address(permit2)), address(this), rescuer, pauser, configurator, attesters
+        );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(_countEvent(logs, keccak256("Permit2Set(address)"), address(permit2)), 1);
+    }
+
+    function testInitialize_doesNotEmitPermit2SetWhenItReverts() public {
+        BatchPayment freshContract = new BatchPayment();
+        address[] memory attesters = new address[](1);
+        attesters[0] = attester;
+
+        vm.recordLogs();
+        vm.expectRevert(BatchPayment.InvalidPermit2.selector);
+        freshContract.initialize(IMinimalPermit2(address(0)), address(this), rescuer, pauser, configurator, attesters);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(_countEvent(logs, keccak256("Permit2Set(address)"), address(permit2)), 0);
+
+        freshContract.initialize(
+            IMinimalPermit2(address(permit2)), address(this), rescuer, pauser, configurator, attesters
+        );
+        vm.recordLogs();
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        freshContract.initialize(
+            IMinimalPermit2(address(permit2)), address(this), rescuer, pauser, configurator, attesters
+        );
+        logs = vm.getRecordedLogs();
+        assertEq(_countEvent(logs, keccak256("Permit2Set(address)"), address(permit2)), 0);
     }
 
     function testExecuteBatchPayment_reentrancyIsBlocked() public {
