@@ -1,0 +1,7 @@
+name: Release SBOM
+on:
+  push:
+    branches: [main]
+jobs:
+  release-sbom:
+    uses: circlefin/circle-public-github-workflows/.github/workflows/attach-release-assets.yaml@v1
