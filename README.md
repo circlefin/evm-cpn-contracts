@@ -5,6 +5,7 @@ Onchain payment settlement for Circle Payments Network:
 * **Create2Factory** — deterministic deployments via `CREATE2`.
 * **PaymentSettlement** — EIP-712 attested payments using Uniswap Permit2 witness transfers, fee split, nonce replay-protection, pausable, rescuable, and configurable roles.
 * **PaymentSettlementV2** — second-generation settlement contract: dual-amount settlement (separate payer contribution and payee settlement amount), optional shortfall coverage by an incentive provider, cumulative refund accounting with per-party caps, and enum-based nonce lifecycle tracking. Shares the same Permit2, role, pause, and rescue primitives as V1.
+* **BatchPayment**: bulk payout: one payer, many recipients, one transaction. Partial settlement by default (refused rows are skipped and reported in a `skippedRows` bitmap; `requireAllRows` makes a call all-or-nothing), fee bounded by the signed `maxFee`, per-transaction nonce replay protection, pausable, rescuable, and configurable roles.
 
 ---
 
@@ -47,7 +48,8 @@ Run `yarn lint` to lint all `.sol` files in the `src` and `test` directories. Ru
 ## Repository layout
 
 ```
-src/                    # Solidity contracts (Create2Factory, PaymentSettlement, PaymentSettlementV2, utils)
+src/                    # Solidity contracts (Create2Factory, PaymentSettlement, PaymentSettlementV2,
+                        #   BatchPayment, utils)
 test/                   # Unit tests
 ```
 

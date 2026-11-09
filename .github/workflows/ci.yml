@@ -5,13 +5,14 @@ on:
     branches: [main]
 jobs:
   lint_and_test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'small-dind' || 'github-hosted-small' }}
     permissions:
       contents: read
       id-token: write
 
     steps:
       - name: Harden the runner
+        if: ${{ !github.event.repository.private }}
         uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
         with:
           egress-policy: block
@@ -38,8 +39,5 @@ jobs:
     needs: lint_and_test
     if: github.event_name == 'pull_request'
     uses: circlefin/circle-public-github-workflows/.github/workflows/pr-scan.yaml@v1
-
-  release-sbom:
-    needs: lint_and_test
-    if: github.event_name == 'push'
-    uses: circlefin/circle-public-github-workflows/.github/workflows/attach-release-assets.yaml@v1
+    with:
+      runs-on: ${{ github.event.repository.private && 'small' || 'github-hosted-small' }}
